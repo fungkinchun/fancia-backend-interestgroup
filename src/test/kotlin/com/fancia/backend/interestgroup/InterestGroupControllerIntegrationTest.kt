@@ -2,8 +2,6 @@ package com.fancia.backend.interestgroup
 
 import com.fancia.backend.interestgroup.core.entity.InterestGroup
 import com.fancia.backend.interestgroup.core.repository.InterestGroupRepository
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.kotlin.readValue
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import org.hamcrest.CoreMatchers.`is`
@@ -105,4 +103,4 @@ private fun ResultActionsDsl.toInterestGroup(objectMapper: JsonMapper): Interest
     andReturn()
         .response
         .contentAsString
-        .let { objectMapper.readValue(it,object : TypeReference<InterestGroup>() {}) }
+        .let { objectMapper.readValue(it, object : TypeReference<InterestGroup>() {}) }
