@@ -21,7 +21,7 @@ phases:
     commands:
       - echo Building Kotlin project...
       - export DATABASE_DRIVER=org.postgresql.Driver
-      - export DATABASE_URL=jdbc-secretsmanager:postgresql://${REPO_NAME}-rds.${PROJECT_NAME}.${ENV}:5432/fancia
+      - export DATABASE_URL=jdbc-secretsmanager:postgresql://${REPO_NAME}-rds.${DOMAIN_NAME}:5432/${PROJECT_NAME}
       - ./gradlew build --info --stacktrace
   post_build:
     commands:
