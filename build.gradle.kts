@@ -89,6 +89,8 @@ dependencies {
     testImplementation("io.kotest:kotest-extensions-spring:6.1.7")
     testImplementation("org.springframework.security:spring-security-test")
     testImplementation("io.kotest:kotest-assertions-ktor:6.1.7")
+    testImplementation("org.wiremock:wiremock:3.13.2")
+    testImplementation("org.wiremock.integrations.testcontainers:wiremock-testcontainers-module:1.0-alpha-13")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 

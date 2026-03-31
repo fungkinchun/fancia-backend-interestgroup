@@ -7,18 +7,19 @@ import io.kotest.matchers.shouldBe
 import org.hamcrest.CoreMatchers.`is`
 import org.hamcrest.CoreMatchers.notNullValue
 import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
+import org.springframework.context.annotation.Import
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.http.MediaType.APPLICATION_JSON
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt
+import org.springframework.test.context.DynamicPropertyRegistry
+import org.springframework.test.context.DynamicPropertySource
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.ResultActionsDsl
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
-import org.testcontainers.containers.PostgreSQLContainer
-import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
+import org.wiremock.integrations.testcontainers.WireMockContainer
 import tools.jackson.core.type.TypeReference
 import tools.jackson.databind.json.JsonMapper
 import java.util.*
@@ -26,6 +27,7 @@ import java.util.*
 @SpringBootTest(classes = [InterestGroupApplication::class])
 @AutoConfigureMockMvc
 @Testcontainers
+@Import(TestConfig::class)
 class InterestGroupControllerIntegrationTest(
     private val mockMvc: MockMvc,
     private val interestGroupRepository: InterestGroupRepository,
@@ -90,12 +92,15 @@ class InterestGroupControllerIntegrationTest(
     }
 }) {
     companion object {
-        @Container
-        @ServiceConnection
-        val postgres: PostgreSQLContainer<*> = PostgreSQLContainer("postgres:16-alpine")
-            .withDatabaseName("testdb")
-            .withUsername("test")
-            .withPassword("test")
+        var wiremock: WireMockContainer = WireMockContainer("wiremock/wiremock:3.12.0").apply {
+            start()
+        }
+
+        @JvmStatic
+        @DynamicPropertySource
+        fun registerProperties(registry: DynamicPropertyRegistry) {
+            registry.add("spring.cloud.openfeign.client.config.interestgroup-service.url") { wiremock.baseUrl }
+        }
     }
 }
 

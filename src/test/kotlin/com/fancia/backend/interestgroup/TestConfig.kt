@@ -1,4 +1,4 @@
-package com.fancia.backend.common
+package com.fancia.backend.interestgroup
 
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection
