@@ -56,9 +56,9 @@ class InterestGroupService(
             ?: throw InvalidAuthenticationException()
         interestGroupMapper.toBean(request).let { it ->
             it.createdBy = userId
-//            val response = commonServiceClient.getTags(request.tags)
-//            it.tags.clear()
-//            it.tags.addAll(response.tags.map { t -> t.name })
+            val response = commonServiceClient.getTags(request.tags)
+            it.tags.clear()
+            it.tags.addAll(response.map { t -> t.name })
             val interestGroup = interestGroupRepository.save(it)
 
             return interestGroup.let(interestGroupMapper::toDto)

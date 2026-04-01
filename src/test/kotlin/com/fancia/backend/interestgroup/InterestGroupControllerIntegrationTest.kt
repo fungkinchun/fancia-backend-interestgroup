@@ -2,6 +2,7 @@ package com.fancia.backend.interestgroup
 
 import com.fancia.backend.interestgroup.core.entity.InterestGroup
 import com.fancia.backend.interestgroup.core.repository.InterestGroupRepository
+import com.github.tomakehurst.wiremock.client.WireMock.*
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import org.hamcrest.CoreMatchers.`is`
@@ -12,8 +13,6 @@ import org.springframework.context.annotation.Import
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.http.MediaType.APPLICATION_JSON
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt
-import org.springframework.test.context.DynamicPropertyRegistry
-import org.springframework.test.context.DynamicPropertySource
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.ResultActionsDsl
 import org.springframework.test.web.servlet.get
@@ -31,9 +30,41 @@ import java.util.*
 class InterestGroupControllerIntegrationTest(
     private val mockMvc: MockMvc,
     private val interestGroupRepository: InterestGroupRepository,
-    private var objectMapper: JsonMapper
+    private val jacksonMapper: JsonMapper,
+    private val wiremock: WireMockContainer
 ) : FunSpec({
+    beforeSpec {
+        configureFor(
+            wiremock.host,
+            wiremock.getMappedPort(8080)
+        )
+    }
     test("should create a new interest group") {
+        val mockResponse = mapOf(
+            "content" to listOf(
+                mapOf(
+                    "name" to "good"
+                )
+            ),
+            "totalElements" to 1,
+            "totalPages" to 1,
+            "size" to 20,
+            "number" to 0
+        )
+        stubFor(
+            get(urlPathEqualTo("/api/tags"))
+                .withQueryParam("search", equalTo("good"))
+                .willReturn(
+                    aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody(
+                            jacksonMapper.writeValueAsString(
+                                mockResponse
+                            )
+                        )
+                )
+        )
         val testUserId = UUID.randomUUID()
         val response = mockMvc
             .post("/api/interestGroups") {
@@ -46,7 +77,7 @@ class InterestGroupControllerIntegrationTest(
                     "tags" to listOf("good"),
                     "createdBy" to UUID.randomUUID().toString()
                 )
-                content = objectMapper.writeValueAsString(requestBody)
+                content = jacksonMapper.writeValueAsString(requestBody)
                 contentType = APPLICATION_JSON
                 accept = APPLICATION_JSON
             }
@@ -56,10 +87,11 @@ class InterestGroupControllerIntegrationTest(
                 jsonPath("$.name", `is`("testInterestGroup"))
                 jsonPath("$.id", `is`(notNullValue()))
             }
-        val createdGroup = response.toInterestGroup(objectMapper)
+        val createdGroup = response.toInterestGroup(jacksonMapper)
         val found = interestGroupRepository.findByIdOrNull(createdGroup.id!!)
         createdGroup shouldBe found
     }
+
 
     test("should list interestGroups") {
         mockMvc
@@ -90,19 +122,7 @@ class InterestGroupControllerIntegrationTest(
     afterSpec {
         interestGroupRepository.deleteAll()
     }
-}) {
-    companion object {
-        var wiremock: WireMockContainer = WireMockContainer("wiremock/wiremock:3.12.0").apply {
-            start()
-        }
-
-        @JvmStatic
-        @DynamicPropertySource
-        fun registerProperties(registry: DynamicPropertyRegistry) {
-            registry.add("spring.cloud.openfeign.client.config.interestgroup-service.url") { wiremock.baseUrl }
-        }
-    }
-}
+})
 
 private fun ResultActionsDsl.toInterestGroup(objectMapper: JsonMapper): InterestGroup =
     andReturn()

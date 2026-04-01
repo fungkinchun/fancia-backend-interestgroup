@@ -91,6 +91,7 @@ dependencies {
     testImplementation("io.kotest:kotest-assertions-ktor:6.1.7")
     testImplementation("org.wiremock:wiremock:3.13.2")
     testImplementation("org.wiremock.integrations.testcontainers:wiremock-testcontainers-module:1.0-alpha-13")
+    testImplementation("org.testcontainers:testcontainers-kafka:2.0.4")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
