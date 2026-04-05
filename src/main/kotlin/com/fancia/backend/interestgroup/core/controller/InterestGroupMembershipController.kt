@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.*
 import java.util.*
 
 @RestController
-@RequestMapping("/api/interestGroupMemberships")
+@RequestMapping("/api/interest-groups")
 @Tag(name = "Interest Group Membership", description = "Interest Group Membership endpoints")
 @SecurityRequirement(name = "bearerAuth")
 class InterestGroupMembershipController(
@@ -37,29 +37,40 @@ class InterestGroupMembershipController(
             ApiResponse(responseCode = "200", description = "Member created"),
         ]
     )
-    @PostMapping
+    @PostMapping("/{interestGroupId}/memberships")
     fun createInterestGroupMembership(
+        @PathVariable interestGroupId: UUID,
         @RequestBody request: CreateInterestGroupMembershipRequest,
         @AuthenticationPrincipal jwt: Jwt
     ): ResponseEntity<InterestGroupMembershipResponse> {
-        val member = interestGroupMembershipService.create(request, jwt)
+        val member = interestGroupMembershipService.create(interestGroupId, request, jwt)
         return ResponseEntity.ok(member)
     }
 
-    @PatchMapping("/{id}")
+    @PatchMapping("/{interestGroupId}/memberships/{userId}")
     @PreAuthorize("hasAuthority('SCOPE_interest_group_membership.update')")
     fun updateInterestGroupMembership(
-        @PathVariable id: UUID,
+        @PathVariable interestGroupId: UUID,
+        @PathVariable userId: UUID,
         @RequestBody request: UpdateInterestGroupMembershipRequest,
         @AuthenticationPrincipal jwt: Jwt
     ): ResponseEntity<Void> {
-        interestGroupMembershipService.update(request, jwt)
+        interestGroupMembershipService.update(interestGroupId, userId, request, jwt)
         return ResponseEntity.ok().build()
     }
 
-    @GetMapping("/user/{userId}")
+    @GetMapping("/users/{userId}/memberships")
+    @Operation(
+        summary = "List interest group memberships for user",
+        description = "Returns a paginated list of interest group memberships for the specified user, optionally filtered by role"
+    )
+    @ApiResponses(
+        value = [
+            ApiResponse(responseCode = "200", description = "List of interest group memberships returned"),
+        ]
+    )
     fun listInterestGroupMembershipsForUser(
-        @PathVariable("userId") userId: UUID,
+        @RequestParam("userId") userId: UUID,
         @RequestParam(required = false)
         @Parameter(description = "Interest group role to filter by")
         role: InterestGroupRole = InterestGroupRole.ADMIN,

@@ -2,6 +2,7 @@ package com.fancia.backend.interestgroup.core.controller
 
 import com.fancia.backend.interestgroup.core.service.InterestGroupMembershipService
 import com.fancia.backend.interestgroup.core.service.InterestGroupService
+import com.fancia.backend.shared.interestgroup.core.dto.CreateInterestGroupMembershipRequest
 import com.fancia.backend.shared.interestgroup.core.dto.CreateInterestGroupRequest
 import com.fancia.backend.shared.interestgroup.core.dto.InterestGroupResponse
 import com.fancia.backend.shared.interestgroup.core.dto.UpdateInterestGroupRequest
@@ -22,7 +23,7 @@ import org.springframework.web.bind.annotation.*
 import java.util.*
 
 @RestController
-@RequestMapping("/api/interestGroups")
+@RequestMapping("/api/interest-groups")
 @Tag(name = "Interest Groups", description = "Interest Group endpoints")
 @SecurityRequirement(name = "bearerAuth")
 class InterestGroupController(
@@ -46,6 +47,7 @@ class InterestGroupController(
         val interestGroup = interestGroupService.create(request, jwt)
         interestGroupMembershipService.create(
             interestGroupId = interestGroup.id!!,
+            CreateInterestGroupMembershipRequest(payload = ""),
             jwt
         )
         return ResponseEntity.ok(interestGroup)

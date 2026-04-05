@@ -20,4 +20,5 @@ interface InterestGroupMapper {
     fun toDto(interestGroup: InterestGroup): InterestGroupResponse
     fun toBean(request: CreateInterestGroupRequest): InterestGroup
     fun toBean(request: UpdateInterestGroupRequest, @MappingTarget target: InterestGroup): InterestGroup
+    fun toBean(request: InterestGroupResponse): InterestGroup
 }

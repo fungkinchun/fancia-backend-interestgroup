@@ -52,10 +52,10 @@ class InterestGroupService(
 
     @Transactional
     fun create(request: @Valid CreateInterestGroupRequest, jwt: Jwt): InterestGroupResponse {
-        val userId = jwt.getClaimAsString("userId")?.let { UUID.fromString(it) }
+        val requesterId = jwt.getClaimAsString("userId")?.let { UUID.fromString(it) }
             ?: throw InvalidAuthenticationException()
         interestGroupMapper.toBean(request).let { it ->
-            it.createdBy = userId
+            it.createdBy = requesterId
             val response = commonServiceClient.getTags(request.tags)
             it.tags.clear()
             it.tags.addAll(response.map { t -> t.name })
@@ -67,10 +67,10 @@ class InterestGroupService(
 
     @Transactional
     fun update(id: UUID, request: @Valid UpdateInterestGroupRequest, jwt: Jwt): InterestGroupResponse {
-        val userId = jwt.getClaimAsString("userId")?.let { UUID.fromString(it) }
+        val requesterId = jwt.getClaimAsString("userId")?.let { UUID.fromString(it) }
             ?: throw InvalidAuthenticationException()
-        val interestGroup = interestGroupRepository.findByIdAndCreatedBy(id, userId)
-            ?: throw InterestGroupMembershipNotFoundException(id, userId)
+        val interestGroup = interestGroupRepository.findByIdAndCreatedBy(id, requesterId)
+            ?: throw InterestGroupMembershipNotFoundException(id, requesterId)
         interestGroupMapper.toBean(request, interestGroup).let {
             return interestGroupRepository.save(it).let(interestGroupMapper::toDto)
         }

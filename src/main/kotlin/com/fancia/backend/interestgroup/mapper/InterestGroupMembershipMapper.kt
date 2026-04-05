@@ -4,10 +4,7 @@ import com.fancia.backend.interestgroup.core.entity.InterestGroupMembership
 import com.fancia.backend.shared.interestgroup.core.dto.CreateInterestGroupMembershipRequest
 import com.fancia.backend.shared.interestgroup.core.dto.InterestGroupMembershipResponse
 import com.fancia.backend.shared.interestgroup.core.dto.UpdateInterestGroupMembershipRequest
-import org.mapstruct.Mapper
-import org.mapstruct.Mapping
-import org.mapstruct.NullValueMappingStrategy
-import org.mapstruct.ReportingPolicy
+import org.mapstruct.*
 
 @Mapper(
     componentModel = "spring",
@@ -24,4 +21,8 @@ interface InterestGroupMembershipMapper {
     @Mapping(target = "interestGroup", ignore = true)
     fun toBean(membership: CreateInterestGroupMembershipRequest): InterestGroupMembership
     fun toBean(membership: UpdateInterestGroupMembershipRequest): InterestGroupMembership
+    fun toBean(
+        request: UpdateInterestGroupMembershipRequest,
+        @MappingTarget target: InterestGroupMembership
+    ): InterestGroupMembership
 }

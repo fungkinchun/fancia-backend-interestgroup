@@ -27,70 +27,60 @@ class InterestGroupMembershipService(
     private val interestGroupMembershipMapper: InterestGroupMembershipMapper,
 ) {
     @Transactional
-    fun create(request: @Valid CreateInterestGroupMembershipRequest, jwt: Jwt): InterestGroupMembershipResponse {
-        val userId = jwt.getClaimAsString("userId")?.let { UUID.fromString(it) }
+    fun create(
+        interestGroupId: UUID,
+        request: @Valid CreateInterestGroupMembershipRequest,
+        jwt: Jwt
+    ): InterestGroupMembershipResponse {
+        val requesterId = jwt.getClaimAsString("userId")?.let { UUID.fromString(it) }
             ?: throw InvalidAuthenticationException()
-        val interestGroup = interestGroupRepository.findByIdOrNull(request.interestGroupId)
-            ?: throw InterestGroupNotFoundException(request.interestGroupId)
+        val interestGroup = interestGroupRepository.findByIdOrNull(interestGroupId)
+            ?: throw InterestGroupNotFoundException(interestGroupId)
         if (interestGroupMembershipRepository.existsByIdInterestGroupIdAndIdUserId(
-                request.interestGroupId,
-                request.userId
+                interestGroupId,
+                requesterId
             )
         ) {
-            throw InterestGroupMembershipAlreadyExistsException(request.interestGroupId, userId)
+            throw InterestGroupMembershipAlreadyExistsException(interestGroupId, requesterId)
         }
-        interestGroupMembershipRepository.existsByIdInterestGroupIdAndIdUserIdAndRole(
-            request.interestGroupId,
-            userId,
-            InterestGroupRole.ADMIN
-        ) || userId == request.userId || throw InterestGroupMembershipAccessDeniedException(
-            request.interestGroupId,
-            userId
-        )
         val membership = interestGroupMembershipMapper.toBean(request)
         membership.interestGroup = interestGroup
         membership.id = InterestGroupMembershipId(
-            interestGroupId = request.interestGroupId,
-            userId = request.userId
+            interestGroupId = interestGroupId,
+            userId = requesterId
         )
         return interestGroupMembershipRepository.save(membership).let(interestGroupMembershipMapper::toDto)
     }
 
     @Transactional
-    fun create(interestGroupId: UUID, jwt: Jwt): InterestGroupMembershipResponse {
-        val userId = jwt.getClaimAsString("userId")?.let { UUID.fromString(it) }
+    fun update(
+        interestGroupId: UUID,
+        userId: UUID,
+        request: @Valid UpdateInterestGroupMembershipRequest, jwt: Jwt
+    ): InterestGroupMembershipResponse {
+        val requesterId = jwt.getClaimAsString("userId")?.let { UUID.fromString(it) }
             ?: throw InvalidAuthenticationException()
-        return create(
-            CreateInterestGroupMembershipRequest(
-                interestGroupId = interestGroupId,
-                userId = userId,
-                payload = ""
-            ),
-            jwt
-        )
-    }
-
-    @Transactional
-    fun update(request: @Valid UpdateInterestGroupMembershipRequest, jwt: Jwt): InterestGroupMembershipResponse {
-        val userId = jwt.getClaimAsString("userId")?.let { UUID.fromString(it) }
-            ?: throw InvalidAuthenticationException()
-        interestGroupMembershipRepository.existsByIdInterestGroupIdAndIdUserId(request.interestGroupId, request.userId)
-                || throw InterestGroupMembershipNotFoundException(request.interestGroupId, request.userId)
+        interestGroupMembershipRepository.existsByIdInterestGroupIdAndIdUserId(interestGroupId, userId)
+                || throw InterestGroupMembershipNotFoundException(interestGroupId, userId)
         val isAdmin = interestGroupMembershipRepository.existsByIdInterestGroupIdAndIdUserIdAndRole(
-            request.interestGroupId,
-            userId,
+            interestGroupId,
+            requesterId,
             InterestGroupRole.ADMIN
         )
         when {
-            !isAdmin && userId != request.userId ->
-                throw InterestGroupMembershipAccessDeniedException(request.interestGroupId, userId)
+            !isAdmin && requesterId != userId ->
+                throw InterestGroupMembershipAccessDeniedException(interestGroupId, requesterId)
 
             !isAdmin && request.status != MembershipStatus.WITHDREW ->
                 throw InterestGroupStatusChangeAccessDeniedException()
         }
-        interestGroupMembershipMapper.toBean(request).let {
-            return interestGroupMembershipMapper.toDto(interestGroupMembershipRepository.save(it))
-        }
+        val membership = interestGroupMembershipRepository.findByIdInterestGroupIdAndIdUserId(
+            interestGroupId,
+            userId
+        ) ?: throw InterestGroupMembershipNotFoundException(interestGroupId, userId)
+        interestGroupMembershipMapper.toBean(request, membership)
+        return interestGroupMembershipRepository.save(membership)
+            .let(interestGroupMembershipMapper::toDto)
     }
 
     @Transactional

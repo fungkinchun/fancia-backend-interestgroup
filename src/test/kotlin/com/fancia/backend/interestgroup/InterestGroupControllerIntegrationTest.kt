@@ -2,6 +2,8 @@ package com.fancia.backend.interestgroup
 
 import com.fancia.backend.interestgroup.core.entity.InterestGroup
 import com.fancia.backend.interestgroup.core.repository.InterestGroupRepository
+import com.fancia.backend.interestgroup.mapper.InterestGroupMapper
+import com.fancia.backend.shared.interestgroup.core.dto.InterestGroupResponse
 import com.github.tomakehurst.wiremock.client.WireMock.*
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
@@ -30,8 +32,9 @@ import java.util.*
 class InterestGroupControllerIntegrationTest(
     private val mockMvc: MockMvc,
     private val interestGroupRepository: InterestGroupRepository,
-    private val jacksonMapper: JsonMapper,
-    private val wiremock: WireMockContainer
+    private val jsonMapper: JsonMapper,
+    private val wiremock: WireMockContainer,
+    private val interestGroupMapper: InterestGroupMapper
 ) : FunSpec({
     beforeSpec {
         configureFor(
@@ -59,7 +62,7 @@ class InterestGroupControllerIntegrationTest(
                         .withStatus(200)
                         .withHeader("Content-Type", "application/json")
                         .withBody(
-                            jacksonMapper.writeValueAsString(
+                            jsonMapper.writeValueAsString(
                                 mockResponse
                             )
                         )
@@ -67,7 +70,7 @@ class InterestGroupControllerIntegrationTest(
         )
         val testUserId = UUID.randomUUID()
         val response = mockMvc
-            .post("/api/interestGroups") {
+            .post("/api/interest-groups") {
                 with(jwt().jwt {
                     it.claim("userId", testUserId)
                 })
@@ -77,7 +80,7 @@ class InterestGroupControllerIntegrationTest(
                     "tags" to listOf("good"),
                     "createdBy" to UUID.randomUUID().toString()
                 )
-                content = jacksonMapper.writeValueAsString(requestBody)
+                content = jsonMapper.writeValueAsString(requestBody)
                 contentType = APPLICATION_JSON
                 accept = APPLICATION_JSON
             }
@@ -87,7 +90,7 @@ class InterestGroupControllerIntegrationTest(
                 jsonPath("$.name", `is`("testInterestGroup"))
                 jsonPath("$.id", `is`(notNullValue()))
             }
-        val createdGroup = response.toInterestGroup(jacksonMapper)
+        val createdGroup = response.toInterestGroup(jsonMapper, interestGroupMapper)
         val found = interestGroupRepository.findByIdOrNull(createdGroup.id!!)
         createdGroup shouldBe found
     }
@@ -95,7 +98,7 @@ class InterestGroupControllerIntegrationTest(
 
     test("should list interestGroups") {
         mockMvc
-            .get("/api/interestGroups?tags=good&page=0&size=3") {
+            .get("/api/interest-groups?tags=good&page=0&size=3") {
                 accept = APPLICATION_JSON
             }
             .andDo { print() }
@@ -109,7 +112,7 @@ class InterestGroupControllerIntegrationTest(
 
     test("should not list interestGroups because of wrong tag") {
         mockMvc
-            .get("/api/interestGroups?tags=bad&page=0&size=3") {
+            .get("/api/interest-groups?tags=bad&page=0&size=3") {
                 accept = APPLICATION_JSON
             }
             .andDo { print() }
@@ -124,8 +127,14 @@ class InterestGroupControllerIntegrationTest(
     }
 })
 
-private fun ResultActionsDsl.toInterestGroup(objectMapper: JsonMapper): InterestGroup =
+private fun ResultActionsDsl.toInterestGroup(
+    jsonMapper: JsonMapper,
+    interestGroupMapper: InterestGroupMapper
+): InterestGroup =
     andReturn()
         .response
         .contentAsString
-        .let { objectMapper.readValue(it, object : TypeReference<InterestGroup>() {}) }
+        .let {
+            jsonMapper.readValue(it, object : TypeReference<InterestGroupResponse>() {})
+                .let(interestGroupMapper::toBean)
+        }

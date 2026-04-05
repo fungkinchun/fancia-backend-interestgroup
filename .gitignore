@@ -39,4 +39,6 @@ out/
 
 ### Kotlin ###
 .kotlin
-gradle.properties
+
+.DS_Store
+*.log

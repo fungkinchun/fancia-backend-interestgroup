@@ -24,11 +24,15 @@ kotlin {
 
 fun RepositoryHandler.codeArtifactRepo(repoName: String) {
     maven {
-        val baseUrl = System.getenv("ARTIFACT_REPO_URL") ?: project.findProperty("ARTIFACT_REPO_URL") as String? ?: error("ARTIFACT_REPO_URL must be provided via environment variable or project property")
+        val baseUrl = System.getenv("ARTIFACT_REPO_URL") ?: project.findProperty("ARTIFACT_REPO_URL") as String?
+        ?: error("ARTIFACT_REPO_URL must be provided via environment variable or project property")
         url = uri("$baseUrl/$repoName/")
         credentials {
-            username = System.getenv("ARTIFACT_REPO_USER") ?: project.findProperty("ARTIFACT_REPO_USER") as String? ?: error("ARTIFACT_REPO_USER must be provided")
-            password = System.getenv("ARTIFACT_REPO_PASSWORD") ?: project.findProperty("ARTIFACT_REPO_PASSWORD") as String? ?: error("ARTIFACT_REPO_PASSWORD must be provided")
+            username = System.getenv("ARTIFACT_REPO_USER") ?: project.findProperty("ARTIFACT_REPO_USER") as String?
+                    ?: error("ARTIFACT_REPO_USER must be provided")
+            password =
+                System.getenv("ARTIFACT_REPO_PASSWORD") ?: project.findProperty("ARTIFACT_REPO_PASSWORD") as String?
+                        ?: error("ARTIFACT_REPO_PASSWORD must be provided")
         }
     }
 }
