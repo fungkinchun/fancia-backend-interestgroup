@@ -86,3 +86,7 @@ management:
   endpoint:
     prometheus:
       enabled: true
+
+flyway:
+  enabled: true
+  locations: classpath:db/migration
