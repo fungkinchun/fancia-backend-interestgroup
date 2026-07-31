@@ -6,11 +6,15 @@ import com.fancia.backend.interestgroup.external.CommonInternalClient
 import com.fancia.backend.shared.common.core.exception.InvalidAuthenticationException
 import com.fancia.backend.shared.common.post.core.dto.CreatePostBody
 import com.fancia.backend.shared.common.post.core.dto.CreatePostRequest
+import com.fancia.backend.shared.common.post.core.dto.PostMediaItem
 import com.fancia.backend.shared.common.post.core.dto.PostResponse
 import com.fancia.backend.shared.common.post.core.dto.UpdatePostRequest
 import com.fancia.backend.shared.common.post.core.exception.PostAccessDeniedException
 import com.fancia.backend.shared.interestgroup.core.enums.MembershipStatus
 import com.fancia.backend.shared.interestgroup.core.exception.InterestGroupNotFoundException
+import com.fancia.backend.shared.upload.storage.core.enums.UploadScope
+import com.fancia.backend.shared.upload.storage.core.service.FileStorageService
+import com.fancia.backend.shared.upload.storage.core.service.moveTmpToDedicatedPath
 import org.slf4j.LoggerFactory
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
@@ -25,6 +29,7 @@ class InterestGroupPostService(
     private val interestGroupMembershipRepository: InterestGroupMembershipRepository,
     private val commonInternalClient: CommonInternalClient,
     private val jsonMapper: JsonMapper,
+    private val fileUploadService: FileStorageService,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
     fun create(groupId: UUID, request: CreatePostBody, jwt: Jwt): PostResponse {
@@ -45,7 +50,7 @@ class InterestGroupPostService(
             targetId = groupId,
             authorUserId = currentUserId,
             body = request.body,
-            media = request.media,
+            media = dedicateMedia(request.media, groupId),
             featured = request.featured,
             pinned = request.pinned,
         )
@@ -64,8 +69,9 @@ class InterestGroupPostService(
         if (!interestGroupRepository.existsById(groupId)) {
             throw InterestGroupNotFoundException(groupId)
         }
-        log.debug("common-api updatePost payload: {}", jsonMapper.writeValueAsString(request))
-        val post = commonInternalClient.updatePost(postId, request)
+        val scopedRequest = request.copy(media = dedicateMedia(request.media, groupId))
+        log.debug("common-api updatePost payload: {}", jsonMapper.writeValueAsString(scopedRequest))
+        val post = commonInternalClient.updatePost(postId, scopedRequest)
         if (post.targetId != groupId) {
             throw InterestGroupNotFoundException(groupId)
         }
@@ -103,4 +109,15 @@ class InterestGroupPostService(
         }
         return post
     }
+
+    private fun dedicateMedia(media: List<PostMediaItem>, groupId: UUID): List<PostMediaItem> =
+        media.map { item ->
+            item.copy(
+                objectKey = fileUploadService.moveTmpToDedicatedPath(
+                    item.objectKey,
+                    UploadScope.INTEREST_GROUP,
+                    groupId,
+                ),
+            )
+        }
 }

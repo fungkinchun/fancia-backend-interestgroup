@@ -67,8 +67,10 @@ class TestConfig {
             registry.add("spring.flyway.enabled") { "true" }
             registry.add("spring.flyway.placeholders.gis_admin_password") { "test-gis-admin" }
             registry.add("spring.cloud.aws.secretsmanager.enabled") { "false" }
+            registry.add("spring.cloud.aws.region.static") { "us-east-1" }
             registry.add("spring.kafka.listener.auto-startup") { "false" }
             registry.add("spring.kafka.admin.auto-create") { "false" }
+            registry.add("app.s3.bucket-name") { "test-bucket" }
             registry.add("spring.autoconfigure.exclude") {
                 listOf(
                     "io.awspring.cloud.autoconfigure.core.AwsAutoConfiguration",

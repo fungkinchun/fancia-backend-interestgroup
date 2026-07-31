@@ -42,6 +42,7 @@ repositories {
     codeArtifactRepo("fancia-backend-shared-common")
     codeArtifactRepo("fancia-backend-shared-user")
     codeArtifactRepo("fancia-backend-shared-interestgroup")
+    codeArtifactRepo("fancia-backend-shared-upload")
 }
 dependencyManagement {
     imports {
@@ -73,6 +74,7 @@ dependencies {
     implementation("com.fancia.backend.shared:common:0.0.1-SNAPSHOT")
     implementation("com.fancia.backend.shared:user:0.0.1-SNAPSHOT")
     implementation("com.fancia.backend.shared:interestgroup:0.0.1-SNAPSHOT")
+    implementation("com.fancia.backend.shared:upload:0.0.1-SNAPSHOT")
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-api:3.0.1")
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.1")
     implementation("org.springdoc:springdoc-openapi-starter-common:3.0.1")
