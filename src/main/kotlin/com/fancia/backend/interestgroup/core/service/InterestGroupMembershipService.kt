@@ -16,6 +16,8 @@ import jakarta.validation.Valid
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.repository.findByIdOrNull
+import com.fancia.backend.interestgroup.external.UserServiceClient
+import org.springframework.data.domain.PageImpl
 import org.springframework.security.oauth2.jwt.Jwt
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -25,6 +27,7 @@ import java.util.*
 class InterestGroupMembershipService(
     private val interestGroupRepository: InterestGroupRepository,
     private val interestGroupMembershipRepository: InterestGroupMembershipRepository,
+    private val userServiceClient: UserServiceClient,
 ) {
     @Transactional
     fun create(
@@ -93,9 +96,20 @@ class InterestGroupMembershipService(
     fun findAllForUser(
         userId: UUID,
         role: InterestGroupRole = InterestGroupRole.ADMIN,
-        pageable: Pageable
+        pageable: Pageable,
+        jwt: Jwt?,
     ): Page<InterestGroupMembershipResponse> {
+        if (!canViewUserGroups(userId, jwt)) {
+            return PageImpl(emptyList(), pageable, 0)
+        }
         val memberships = interestGroupMembershipRepository.findByIdUserIdAndRole(userId, role, pageable)
         return memberships.map { it.toDto() }
+    }
+
+    private fun canViewUserGroups(targetUserId: UUID, jwt: Jwt?): Boolean {
+        val viewerId = jwt?.getClaimAsString("userId")?.let { UUID.fromString(it) }
+        if (viewerId == targetUserId) return true
+        val user = runCatching { userServiceClient.getUser(targetUserId) }.getOrNull() ?: return false
+        return user.privacy.showGroups
     }
 }

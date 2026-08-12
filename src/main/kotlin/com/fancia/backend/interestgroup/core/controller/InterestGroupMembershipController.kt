@@ -62,7 +62,7 @@ class InterestGroupMembershipController(
     @GetMapping("/users/{userId}/memberships")
     @Operation(
         summary = "List interest group memberships for user",
-        description = "Returns a paginated list of interest group memberships for the specified user, optionally filtered by role"
+        description = "Returns a paginated list of interest group memberships for the specified user, optionally filtered by role. Hidden unless privacy.showGroups is explicitly true, except when the viewer is that user."
     )
     @ApiResponses(
         value = [
@@ -70,14 +70,15 @@ class InterestGroupMembershipController(
         ]
     )
     fun listInterestGroupMembershipsForUser(
-        @RequestParam("userId") userId: UUID,
+        @PathVariable userId: UUID,
         @RequestParam(required = false)
         @Parameter(description = "Interest group role to filter by")
         role: InterestGroupRole = InterestGroupRole.ADMIN,
         @PageableDefault(size = 20)
-        pageable: Pageable
+        pageable: Pageable,
+        @AuthenticationPrincipal jwt: Jwt,
     ): ResponseEntity<Page<InterestGroupMembershipResponse>> {
-        val memberships = interestGroupMembershipService.findAllForUser(userId, role, pageable)
+        val memberships = interestGroupMembershipService.findAllForUser(userId, role, pageable, jwt)
         return ResponseEntity.ok(memberships)
     }
 }
