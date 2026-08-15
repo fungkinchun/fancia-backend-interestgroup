@@ -1,7 +1,7 @@
 package com.fancia.backend.interestgroup.external
 
 import com.fancia.backend.interestgroup.config.FeignConfig
-import com.fancia.backend.shared.user.core.dto.UserResponse
+import com.fancia.backend.shared.user.core.dto.ProfileResponse
 import org.springframework.cloud.openfeign.FeignClient
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -14,5 +14,5 @@ import java.util.UUID
 )
 interface UserServiceClient {
     @GetMapping("/{id}")
-    fun getUser(@PathVariable id: UUID): UserResponse
+    fun getUser(@PathVariable id: UUID): ProfileResponse
 }

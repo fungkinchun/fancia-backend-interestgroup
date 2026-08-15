@@ -110,6 +110,7 @@ class InterestGroupMembershipService(
         val viewerId = jwt?.getClaimAsString("userId")?.let { UUID.fromString(it) }
         if (viewerId == targetUserId) return true
         val user = runCatching { userServiceClient.getUser(targetUserId) }.getOrNull() ?: return false
-        return user.privacy.showGroups
+        // ProfileResponse applies privacy: null groupsCount means section hidden.
+        return user.groupsCount != null
     }
 }

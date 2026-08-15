@@ -41,10 +41,14 @@ class InterestGroupMembershipControllerIntegrationTest(
     }
 
     fun stubUser(userId: UUID, showGroups: Boolean?) {
-        val privacyBody = if (showGroups == null) {
-            emptyMap<String, Any>()
-        } else {
-            mapOf("showGroups" to showGroups)
+        // ProfileResponse: non-null groupsCount = visible; omit = hidden.
+        // null showGroups arg → default visible (legacy privacy default).
+        val body = mutableMapOf<String, Any>(
+            "id" to userId.toString(),
+            "visibility" to "PUBLIC",
+        )
+        if (showGroups != false) {
+            body["groupsCount"] = 0
         }
         stubFor(
             get(urlPathEqualTo("/api/users/$userId"))
@@ -52,15 +56,7 @@ class InterestGroupMembershipControllerIntegrationTest(
                     aResponse()
                         .withStatus(200)
                         .withHeader("Content-Type", "application/json")
-                        .withBody(
-                            jsonMapper.writeValueAsString(
-                                mapOf(
-                                    "id" to userId.toString(),
-                                    "visibility" to "PUBLIC",
-                                    "privacy" to privacyBody,
-                                ),
-                            ),
-                        ),
+                        .withBody(jsonMapper.writeValueAsString(body)),
                 ),
         )
     }
