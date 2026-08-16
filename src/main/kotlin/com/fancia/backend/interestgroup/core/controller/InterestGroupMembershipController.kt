@@ -59,6 +59,25 @@ class InterestGroupMembershipController(
         return ResponseEntity.ok().build()
     }
 
+    @GetMapping("/{interestGroupId}/memberships")
+    @Operation(
+        summary = "List memberships in an interest group",
+        description = "Returns ACCEPTED memberships for the group. Optionally filter by role " +
+            "(e.g. role=ADMIN). Readable without authentication, same as get-group.",
+    )
+    @ApiResponses(
+        value = [
+            ApiResponse(responseCode = "200", description = "List of interest group memberships returned"),
+        ],
+    )
+    fun listMembershipsInGroup(
+        @PathVariable interestGroupId: UUID,
+        @RequestParam(required = false)
+        @Parameter(description = "Optional role filter among ACCEPTED memberships")
+        role: InterestGroupRole? = null,
+    ): ResponseEntity<List<InterestGroupMembershipResponse>> =
+        ResponseEntity.ok(interestGroupMembershipService.listMembershipsInGroup(interestGroupId, role))
+
     @GetMapping("/users/{userId}/memberships")
     @Operation(
         summary = "List interest group memberships for user",

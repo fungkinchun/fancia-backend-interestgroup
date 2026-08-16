@@ -21,6 +21,7 @@ import org.springframework.data.domain.PageImpl
 import org.springframework.security.oauth2.jwt.Jwt
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.LocalDateTime
 import java.util.*
 
 @Service
@@ -52,6 +53,9 @@ class InterestGroupMembershipService(
             interestGroupId = interestGroupId,
             userId = currentUserId
         )
+        // Join requests start PENDING; joinedAt is set only when status becomes ACCEPTED.
+        membership.status = MembershipStatus.PENDING
+        membership.joinedAt = null
         return interestGroupMembershipRepository.save(membership).toDto()
     }
 
@@ -81,7 +85,11 @@ class InterestGroupMembershipService(
             interestGroupId,
             userId
         ) ?: throw InterestGroupMembershipNotFoundException(interestGroupId, userId)
+        val previousStatus = membership.status
         request.toEntity(membership)
+        if (membership.status == MembershipStatus.ACCEPTED && previousStatus != MembershipStatus.ACCEPTED) {
+            membership.joinedAt = LocalDateTime.now()
+        }
         return interestGroupMembershipRepository.save(membership).toDto()
     }
 
@@ -103,6 +111,27 @@ class InterestGroupMembershipService(
             return PageImpl(emptyList(), pageable, 0)
         }
         val memberships = interestGroupMembershipRepository.findByIdUserIdAndRole(userId, role, pageable)
+        return memberships.map { it.toDto() }
+    }
+
+    fun listMembershipsInGroup(
+        interestGroupId: UUID,
+        role: InterestGroupRole? = null,
+    ): List<InterestGroupMembershipResponse> {
+        interestGroupRepository.findByIdOrNull(interestGroupId)
+            ?: throw InterestGroupNotFoundException(interestGroupId)
+        val memberships = if (role != null) {
+            interestGroupMembershipRepository.findByIdInterestGroupIdAndRoleAndStatus(
+                interestGroupId,
+                role,
+                MembershipStatus.ACCEPTED,
+            )
+        } else {
+            interestGroupMembershipRepository.findByIdInterestGroupIdAndStatus(
+                interestGroupId,
+                MembershipStatus.ACCEPTED,
+            )
+        }
         return memberships.map { it.toDto() }
     }
 

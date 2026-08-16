@@ -39,4 +39,15 @@ interface InterestGroupMembershipRepository : JpaRepository<InterestGroupMembers
         userId: UUID,
         status: MembershipStatus,
     ): Boolean
+
+    fun findByIdInterestGroupIdAndRoleAndStatus(
+        interestGroupId: UUID,
+        role: InterestGroupRole,
+        status: MembershipStatus,
+    ): List<InterestGroupMembership>
+
+    fun findByIdInterestGroupIdAndStatus(
+        interestGroupId: UUID,
+        status: MembershipStatus,
+    ): List<InterestGroupMembership>
 }

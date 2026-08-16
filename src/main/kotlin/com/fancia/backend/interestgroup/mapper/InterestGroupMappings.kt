@@ -49,6 +49,8 @@ fun InterestGroupMembership.toDto(): InterestGroupMembershipResponse =
         interestGroupId = id?.interestGroupId,
         userId = id?.userId,
         status = status,
+        role = role,
+        joinedAt = joinedAt,
     )
 
 fun CreateInterestGroupMembershipRequest.toEntity(): InterestGroupMembership =
