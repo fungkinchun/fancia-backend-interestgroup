@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component
 class UserConsumer(
     private val interestGroupMembershipService: InterestGroupMembershipService
 ) {
-    @KafkaListener(topics = ["users"], groupId = "deletion")
+    @KafkaListener(topics = ["users"], groupId = "interestgroup-user-deletion")
     fun onUserDeleted(event: UserDeletedEvent) {
         interestGroupMembershipService.removeMemberFromAllGroups(event.id)
     }
