@@ -71,6 +71,7 @@ class InterestGroupMembershipControllerIntegrationTest(
         val group = interestGroupRepository.save(
             InterestGroup().apply {
                 name = "Hidden group"
+                slug = "hidden-group"
                 description = "Test group"
                 createdBy = ownerId
             },
@@ -103,6 +104,7 @@ class InterestGroupMembershipControllerIntegrationTest(
         val group = interestGroupRepository.save(
             InterestGroup().apply {
                 name = "Visible group"
+                slug = "visible-group"
                 description = "Test group"
                 createdBy = ownerId
             },
@@ -134,6 +136,7 @@ class InterestGroupMembershipControllerIntegrationTest(
         val group = interestGroupRepository.save(
             InterestGroup().apply {
                 name = "Owner group"
+                slug = "owner-group"
                 description = "Test group"
                 createdBy = ownerId
             },

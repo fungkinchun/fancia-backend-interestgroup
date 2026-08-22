@@ -104,6 +104,7 @@ class InterestGroupControllerIntegrationTest(
             .andExpect {
                 status { isOk() }
                 jsonPath("$.name", `is`("testInterestGroup"))
+                jsonPath("$.slug", `is`("testinterestgroup"))
                 jsonPath("$.id", `is`(notNullValue()))
                 jsonPath("$.links.length()", `is`(2))
                 jsonPath("$.links[0].type", `is`("WEBSITE"))
@@ -172,7 +173,21 @@ class InterestGroupControllerIntegrationTest(
                 status { isOk() }
                 jsonPath("$.id", `is`(group.id.toString()))
                 jsonPath("$.name", `is`("testInterestGroup"))
+                jsonPath("$.slug", `is`("testinterestgroup"))
                 jsonPath("$.links.length()", `is`(2))
+            }
+    }
+
+    test("should get interest group by slug") {
+        val group = interestGroupRepository.findAll().first { it.name == "testInterestGroup" }
+        mockMvc
+            .get("/api/interest-groups/${group.slug}") {
+                accept = APPLICATION_JSON
+            }
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.id", `is`(group.id!!.toString()))
+                jsonPath("$.slug", `is`("testinterestgroup"))
             }
     }
 

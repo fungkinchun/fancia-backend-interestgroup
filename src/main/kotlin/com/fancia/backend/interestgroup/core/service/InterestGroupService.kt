@@ -6,6 +6,7 @@ import com.fancia.backend.interestgroup.external.CommonServiceClient
 import com.fancia.backend.interestgroup.mapper.toDto
 import com.fancia.backend.interestgroup.mapper.toEntity
 import com.fancia.backend.shared.common.core.exception.InvalidAuthenticationException
+import com.fancia.backend.shared.common.core.utils.Slugify
 import com.fancia.backend.shared.common.social.core.entity.Link
 import com.fancia.backend.shared.common.tag.core.dto.CreateTagsRequest
 import com.fancia.backend.shared.common.tag.core.dto.TagItemRequest
@@ -32,6 +33,20 @@ class InterestGroupService(
         return interestGroupRepository.findById(id)
             .map { it.toDto() }
             .orElseThrow { InterestGroupNotFoundException(id) }
+    }
+
+    fun findByIdOrSlug(ref: String): InterestGroupResponse {
+        return resolveByIdOrSlug(ref).toDto()
+    }
+
+    fun resolveByIdOrSlug(ref: String): InterestGroup {
+        val trimmed = ref.trim()
+        if (trimmed.isEmpty()) throw InterestGroupNotFoundException(ref)
+        val asUuid = runCatching { UUID.fromString(trimmed) }.getOrNull()
+        if (asUuid != null) {
+            return interestGroupRepository.findById(asUuid).orElseThrow { InterestGroupNotFoundException(asUuid) }
+        }
+        return interestGroupRepository.findBySlug(trimmed).orElseThrow { InterestGroupNotFoundException(trimmed) }
     }
 
     fun findAll(
@@ -73,6 +88,7 @@ class InterestGroupService(
             ?: throw InvalidAuthenticationException()
         request.toEntity().let { it ->
             it.createdBy = currentUserId
+            it.slug = allocateGroupSlug(request.name)
             applyTags(it.tags, request.tags)
             it.links.clear()
             it.links.addAll(request.links.map { link -> Link(type = link.type, url = link.url) })
@@ -115,4 +131,7 @@ class InterestGroupService(
         ).content.mapNotNull { it.id }
         tags.addAll(resolved)
     }
+
+    private fun allocateGroupSlug(name: String): String =
+        Slugify.allocateUnique(name, fallback = "group") { interestGroupRepository.existsBySlug(it) }
 }

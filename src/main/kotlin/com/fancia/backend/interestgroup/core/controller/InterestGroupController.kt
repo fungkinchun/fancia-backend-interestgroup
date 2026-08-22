@@ -68,10 +68,10 @@ class InterestGroupController(
         return ResponseEntity.ok(interestGroupService.update(id, request, jwt))
     }
 
-    @GetMapping("/{id}")
-    @Operation(summary = "Get interest group by id")
-    fun getInterestGroup(@PathVariable id: UUID): ResponseEntity<InterestGroupResponse> {
-        return ResponseEntity.ok(interestGroupService.findById(id))
+    @GetMapping("/{ref}")
+    @Operation(summary = "Get interest group by id or slug")
+    fun getInterestGroup(@PathVariable ref: String): ResponseEntity<InterestGroupResponse> {
+        return ResponseEntity.ok(interestGroupService.findByIdOrSlug(ref))
     }
 
     @GetMapping

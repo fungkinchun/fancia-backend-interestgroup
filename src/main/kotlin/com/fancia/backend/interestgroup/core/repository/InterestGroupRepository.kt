@@ -42,4 +42,8 @@ interface InterestGroupRepository : JpaRepository<InterestGroup, UUID> {
 
     @Query("SELECT g FROM InterestGroup g WHERE :tagId MEMBER OF g.tags")
     fun findByTagId(@Param("tagId") tagId: UUID): List<InterestGroup>
+
+    fun findBySlug(slug: String): Optional<InterestGroup>
+
+    fun existsBySlug(slug: String): Boolean
 }

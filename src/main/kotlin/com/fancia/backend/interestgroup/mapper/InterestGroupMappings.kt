@@ -15,6 +15,7 @@ fun InterestGroup.toDto(): InterestGroupResponse =
     InterestGroupResponse(
         id = id,
         name = name,
+        slug = slug,
         description = description,
         createdBy = createdBy,
         createdAt = createdAt,
@@ -37,6 +38,7 @@ fun InterestGroupResponse.toEntity(): InterestGroup =
     InterestGroup().apply {
         id = this@toEntity.id
         name = this@toEntity.name
+        slug = this@toEntity.slug
         description = this@toEntity.description
         createdBy = this@toEntity.createdBy
         createdAt = this@toEntity.createdAt
