@@ -11,7 +11,7 @@ import com.fancia.backend.shared.interestgroup.core.dto.InterestGroupResponse
 import com.fancia.backend.shared.interestgroup.core.dto.UpdateInterestGroupMembershipRequest
 import com.fancia.backend.shared.interestgroup.core.dto.UpdateInterestGroupRequest
 
-fun InterestGroup.toDto(): InterestGroupResponse =
+fun InterestGroup.toDto(memberCount: Long = 0): InterestGroupResponse =
     InterestGroupResponse(
         id = id,
         name = name,
@@ -20,6 +20,7 @@ fun InterestGroup.toDto(): InterestGroupResponse =
         createdBy = createdBy,
         createdAt = createdAt,
         tags = tags,
+        memberCount = memberCount,
         links = links.map { it.toDto() },
     )
 

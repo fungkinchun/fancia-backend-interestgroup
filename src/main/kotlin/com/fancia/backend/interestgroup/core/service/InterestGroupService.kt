@@ -1,6 +1,7 @@
 package com.fancia.backend.interestgroup.core.service
 
 import com.fancia.backend.interestgroup.core.entity.InterestGroup
+import com.fancia.backend.interestgroup.core.repository.InterestGroupMembershipRepository
 import com.fancia.backend.interestgroup.core.repository.InterestGroupRepository
 import com.fancia.backend.interestgroup.external.CommonServiceClient
 import com.fancia.backend.interestgroup.mapper.toDto
@@ -13,6 +14,7 @@ import com.fancia.backend.shared.common.tag.core.dto.TagItemRequest
 import com.fancia.backend.shared.interestgroup.core.dto.CreateInterestGroupRequest
 import com.fancia.backend.shared.interestgroup.core.dto.InterestGroupResponse
 import com.fancia.backend.shared.interestgroup.core.dto.UpdateInterestGroupRequest
+import com.fancia.backend.shared.interestgroup.core.enums.MembershipStatus
 import com.fancia.backend.shared.interestgroup.core.exception.InterestGroupMembershipNotFoundException
 import com.fancia.backend.shared.interestgroup.core.exception.InterestGroupNotFoundException
 import jakarta.validation.Valid
@@ -26,17 +28,18 @@ import java.util.*
 @Service
 class InterestGroupService(
     private val interestGroupRepository: InterestGroupRepository,
-    private val interestGroupMembershipService: InterestGroupMembershipService,
+    private val interestGroupMembershipRepository: InterestGroupMembershipRepository,
     private val commonServiceClient: CommonServiceClient,
 ) {
     fun findById(id: UUID): InterestGroupResponse {
         return interestGroupRepository.findById(id)
-            .map { it.toDto() }
+            .map { it.toDto(acceptedMemberCount(it.id!!)) }
             .orElseThrow { InterestGroupNotFoundException(id) }
     }
 
     fun findByIdOrSlug(ref: String): InterestGroupResponse {
-        return resolveByIdOrSlug(ref).toDto()
+        val group = resolveByIdOrSlug(ref)
+        return group.toDto(acceptedMemberCount(group.id!!))
     }
 
     fun resolveByIdOrSlug(ref: String): InterestGroup {
@@ -75,7 +78,10 @@ class InterestGroupService(
                     pageable,
                 )
         }
-        return groups.map { it.toDto() }
+        val counts = acceptedMemberCounts(groups.content.mapNotNull { it.id })
+        return groups.map { group ->
+            group.toDto(counts[group.id] ?: 0L)
+        }
     }
 
     fun findByIdAndCreatedBy(id: UUID, createdBy: UUID): InterestGroup? {
@@ -93,7 +99,8 @@ class InterestGroupService(
             it.links.clear()
             it.links.addAll(request.links.map { link -> Link(type = link.type, url = link.url) })
             val interestGroup = interestGroupRepository.save(it)
-            return interestGroup.toDto()
+            // Creator membership is added by the controller after create; count starts at 0.
+            return interestGroup.toDto(0)
         }
     }
 
@@ -107,7 +114,8 @@ class InterestGroupService(
             applyTags(it.tags, request.tags)
             it.links.clear()
             it.links.addAll(request.links.map { link -> Link(type = link.type, url = link.url) })
-            return interestGroupRepository.save(it).toDto()
+            val saved = interestGroupRepository.save(it)
+            return saved.toDto(acceptedMemberCount(saved.id!!))
         }
     }
 
@@ -120,6 +128,23 @@ class InterestGroupService(
         if (groupsWithTag.isNotEmpty()) {
             interestGroupRepository.saveAll(groupsWithTag)
         }
+    }
+
+    private fun acceptedMemberCount(groupId: UUID): Long =
+        interestGroupMembershipRepository.countByIdInterestGroupIdAndStatus(
+            groupId,
+            MembershipStatus.ACCEPTED,
+        )
+
+    private fun acceptedMemberCounts(groupIds: Collection<UUID>): Map<UUID, Long> {
+        if (groupIds.isEmpty()) return emptyMap()
+        return interestGroupMembershipRepository
+            .countByInterestGroupIdInAndStatus(groupIds, MembershipStatus.ACCEPTED)
+            .associate { row ->
+                val id = row[0] as UUID
+                val count = (row[1] as Number).toLong()
+                id to count
+            }
     }
 
     private fun applyTags(tags: MutableSet<UUID>, requestTags: Set<TagItemRequest>) {

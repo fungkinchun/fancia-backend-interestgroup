@@ -56,7 +56,8 @@ class InterestGroupController(
             ),
             jwt
         )
-        return ResponseEntity.ok(interestGroup)
+        // Re-load so memberCount includes the creator's ACCEPTED membership.
+        return ResponseEntity.ok(interestGroupService.findById(interestGroup.id!!))
     }
 
     @PutMapping("/{id}")

@@ -6,6 +6,8 @@ import com.fancia.backend.shared.interestgroup.core.enums.MembershipStatus
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Query
+import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
 import java.util.*
 
@@ -50,4 +52,23 @@ interface InterestGroupMembershipRepository : JpaRepository<InterestGroupMembers
         interestGroupId: UUID,
         status: MembershipStatus,
     ): List<InterestGroupMembership>
+
+    fun countByIdInterestGroupIdAndStatus(
+        interestGroupId: UUID,
+        status: MembershipStatus,
+    ): Long
+
+    @Query(
+        """
+        SELECT m.id.interestGroupId, COUNT(m)
+        FROM InterestGroupMembership m
+        WHERE m.id.interestGroupId IN :groupIds
+          AND m.status = :status
+        GROUP BY m.id.interestGroupId
+        """,
+    )
+    fun countByInterestGroupIdInAndStatus(
+        @Param("groupIds") groupIds: Collection<UUID>,
+        @Param("status") status: MembershipStatus,
+    ): List<Array<Any>>
 }
