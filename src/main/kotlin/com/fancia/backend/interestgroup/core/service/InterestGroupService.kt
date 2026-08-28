@@ -7,6 +7,7 @@ import com.fancia.backend.interestgroup.external.CommonServiceClient
 import com.fancia.backend.interestgroup.mapper.toDto
 import com.fancia.backend.interestgroup.mapper.toEntity
 import com.fancia.backend.shared.common.core.exception.InvalidAuthenticationException
+import com.fancia.backend.shared.common.core.exception.PremiumFeatureLimitException
 import com.fancia.backend.shared.common.core.utils.Slugify
 import com.fancia.backend.shared.common.social.core.entity.Link
 import com.fancia.backend.shared.common.tag.core.dto.CreateTagsRequest
@@ -17,6 +18,8 @@ import com.fancia.backend.shared.interestgroup.core.dto.UpdateInterestGroupReque
 import com.fancia.backend.shared.interestgroup.core.enums.MembershipStatus
 import com.fancia.backend.shared.interestgroup.core.exception.InterestGroupMembershipNotFoundException
 import com.fancia.backend.shared.interestgroup.core.exception.InterestGroupNotFoundException
+import com.fancia.backend.shared.user.core.support.PremiumLimits
+import com.fancia.backend.shared.user.core.support.isPremiumClaim
 import jakarta.validation.Valid
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
@@ -92,6 +95,15 @@ class InterestGroupService(
     fun create(request: @Valid CreateInterestGroupRequest, jwt: Jwt): InterestGroupResponse {
         val currentUserId = jwt.getClaimAsString("userId")?.let { UUID.fromString(it) }
             ?: throw InvalidAuthenticationException()
+        if (!PremiumLimits.allowsUnlimitedGroups(jwt.isPremiumClaim())) {
+            val owned = interestGroupRepository.countByCreatedBy(currentUserId)
+            if (owned >= PremiumLimits.GROUPS_FREE) {
+                throw PremiumFeatureLimitException(
+                    "Free plan allows up to ${PremiumLimits.GROUPS_FREE} groups. " +
+                        "Upgrade to Fancia Premium for unlimited group creation.",
+                )
+            }
+        }
         request.toEntity().let { it ->
             it.createdBy = currentUserId
             it.slug = allocateGroupSlug(request.name)
@@ -99,7 +111,6 @@ class InterestGroupService(
             it.links.clear()
             it.links.addAll(request.links.map { link -> Link(type = link.type, url = link.url) })
             val interestGroup = interestGroupRepository.save(it)
-            // Creator membership is added by the controller after create; count starts at 0.
             return interestGroup.toDto(0)
         }
     }

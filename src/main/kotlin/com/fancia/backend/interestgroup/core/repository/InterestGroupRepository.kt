@@ -46,4 +46,6 @@ interface InterestGroupRepository : JpaRepository<InterestGroup, UUID> {
     fun findBySlug(slug: String): Optional<InterestGroup>
 
     fun existsBySlug(slug: String): Boolean
+
+    fun countByCreatedBy(createdBy: UUID): Long
 }
