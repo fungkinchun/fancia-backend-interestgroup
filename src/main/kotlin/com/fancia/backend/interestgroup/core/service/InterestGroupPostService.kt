@@ -5,7 +5,6 @@ import com.fancia.backend.interestgroup.core.repository.InterestGroupRepository
 import com.fancia.backend.interestgroup.external.CommonInternalClient
 import com.fancia.backend.shared.common.core.exception.InvalidAuthenticationException
 import com.fancia.backend.shared.common.post.core.dto.CastPollVoteRequest
-import com.fancia.backend.shared.common.post.core.enums.PostKind
 import com.fancia.backend.shared.common.post.core.dto.CreatePostBody
 import com.fancia.backend.shared.common.post.core.dto.CreatePostRequest
 import com.fancia.backend.shared.common.post.core.dto.PostMediaItem
@@ -109,14 +108,14 @@ class InterestGroupPostService(
 
     fun list(
         groupId: UUID,
-        kind: PostKind? = null,
-        openOnly: Boolean = false,
+        kind: com.fancia.backend.shared.common.post.core.enums.PostKind? = null,
+        status: List<com.fancia.backend.shared.common.post.core.enums.PostStatus>? = null,
         pageable: Pageable,
     ): Page<PostResponse> {
         if (!interestGroupRepository.existsById(groupId)) {
             throw InterestGroupNotFoundException(groupId)
         }
-        return commonInternalClient.listPosts(groupId, kind, openOnly, pageable)
+        return commonInternalClient.listPosts(groupId, kind, status, pageable)
     }
 
     fun get(groupId: UUID, postId: UUID): PostResponse {

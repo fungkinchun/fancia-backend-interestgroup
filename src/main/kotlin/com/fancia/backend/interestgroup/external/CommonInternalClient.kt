@@ -4,10 +4,11 @@ import com.fancia.backend.interestgroup.config.FeignConfig
 import com.fancia.backend.shared.common.comment.core.dto.CommentResponse
 import com.fancia.backend.shared.common.comment.core.dto.CreateCommentRequest
 import com.fancia.backend.shared.common.post.core.dto.CastPollVoteRequest
-import com.fancia.backend.shared.common.post.core.enums.PostKind
 import com.fancia.backend.shared.common.post.core.dto.CreatePostRequest
 import com.fancia.backend.shared.common.post.core.dto.PostResponse
 import com.fancia.backend.shared.common.post.core.dto.UpdatePostRequest
+import com.fancia.backend.shared.common.post.core.enums.PostKind
+import com.fancia.backend.shared.common.post.core.enums.PostStatus
 import org.springframework.cloud.openfeign.FeignClient
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
@@ -40,7 +41,7 @@ interface CommonInternalClient {
     fun listPosts(
         @RequestParam targetId: UUID,
         @RequestParam(required = false) kind: PostKind? = null,
-        @RequestParam(defaultValue = "false") openOnly: Boolean = false,
+        @RequestParam(required = false) status: List<PostStatus>? = null,
         pageable: Pageable,
     ): Page<PostResponse>
 

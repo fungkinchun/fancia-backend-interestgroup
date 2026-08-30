@@ -184,7 +184,7 @@ class InterestGroupPostControllerIntegrationTest(
                     mapOf(
                         "body" to "hello",
                         "media" to emptyList<Any>(),
-                        "status" to "VISIBLE",
+                        "status" to "NONE",
                     )
                 )
                 contentType = APPLICATION_JSON
@@ -208,7 +208,7 @@ class InterestGroupPostControllerIntegrationTest(
                     mapOf(
                         "body" to "hello",
                         "media" to emptyList<Any>(),
-                        "status" to "VISIBLE",
+                        "status" to "NONE",
                     )
                 )
                 contentType = APPLICATION_JSON
