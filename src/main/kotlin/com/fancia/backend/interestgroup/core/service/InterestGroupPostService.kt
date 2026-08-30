@@ -4,6 +4,8 @@ import com.fancia.backend.interestgroup.core.repository.InterestGroupMembershipR
 import com.fancia.backend.interestgroup.core.repository.InterestGroupRepository
 import com.fancia.backend.interestgroup.external.CommonInternalClient
 import com.fancia.backend.shared.common.core.exception.InvalidAuthenticationException
+import com.fancia.backend.shared.common.post.core.dto.CastPollVoteRequest
+import com.fancia.backend.shared.common.post.core.enums.PostKind
 import com.fancia.backend.shared.common.post.core.dto.CreatePostBody
 import com.fancia.backend.shared.common.post.core.dto.CreatePostRequest
 import com.fancia.backend.shared.common.post.core.dto.PostMediaItem
@@ -51,8 +53,10 @@ class InterestGroupPostService(
             authorUserId = currentUserId,
             body = request.body,
             media = dedicateMedia(request.media, groupId),
-            featured = request.featured,
-            pinned = request.pinned,
+            status = request.status,
+            expiredAt = request.expiredAt,
+            kind = request.kind,
+            poll = request.poll,
         )
         log.debug("common-api createPost payload: {}", jsonMapper.writeValueAsString(internalRequest))
         return commonInternalClient.createPost(internalRequest)
@@ -92,11 +96,27 @@ class InterestGroupPostService(
         commonInternalClient.unlikePost(postId)
     }
 
-    fun list(groupId: UUID, pageable: Pageable): Page<PostResponse> {
+    fun vote(groupId: UUID, postId: UUID, request: CastPollVoteRequest, jwt: Jwt): PostResponse {
+        jwt.getClaimAsString("userId")?.let { UUID.fromString(it) }
+            ?: throw InvalidAuthenticationException()
+        get(groupId, postId)
+        val post = commonInternalClient.voteOnPost(postId, request)
+        if (post.targetId != groupId) {
+            throw InterestGroupNotFoundException(groupId)
+        }
+        return post
+    }
+
+    fun list(
+        groupId: UUID,
+        kind: PostKind? = null,
+        openOnly: Boolean = false,
+        pageable: Pageable,
+    ): Page<PostResponse> {
         if (!interestGroupRepository.existsById(groupId)) {
             throw InterestGroupNotFoundException(groupId)
         }
-        return commonInternalClient.listPosts(groupId, pageable)
+        return commonInternalClient.listPosts(groupId, kind, openOnly, pageable)
     }
 
     fun get(groupId: UUID, postId: UUID): PostResponse {
