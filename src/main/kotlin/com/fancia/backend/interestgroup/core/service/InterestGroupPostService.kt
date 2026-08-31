@@ -51,10 +51,10 @@ class InterestGroupPostService(
             targetId = groupId,
             authorUserId = currentUserId,
             body = request.body,
-            media = dedicateMedia(request.media, groupId),
-            status = request.status,
+            media = dedicateMedia(request.mediaOrEmpty(), groupId),
+            status = request.statusOrDefault(),
             expiredAt = request.expiredAt,
-            kind = request.kind,
+            kind = request.kindOrDefault(),
             poll = request.poll,
         )
         log.debug("common-api createPost payload: {}", jsonMapper.writeValueAsString(internalRequest))
