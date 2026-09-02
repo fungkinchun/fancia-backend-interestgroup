@@ -5,6 +5,7 @@ import com.fancia.backend.shared.interestgroup.core.dto.CreateInterestGroupMembe
 import com.fancia.backend.shared.interestgroup.core.dto.InterestGroupMembershipResponse
 import com.fancia.backend.shared.interestgroup.core.dto.UpdateInterestGroupMembershipRequest
 import com.fancia.backend.shared.interestgroup.core.enums.InterestGroupRole
+import com.fancia.backend.shared.interestgroup.core.enums.MembershipStatus
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.responses.ApiResponse
@@ -62,8 +63,8 @@ class InterestGroupMembershipController(
     @GetMapping("/{interestGroupId}/memberships")
     @Operation(
         summary = "List memberships in an interest group",
-        description = "Returns ACCEPTED memberships for the group. Optionally filter by role " +
-            "(e.g. role=ADMIN). Readable without authentication, same as get-group.",
+        description = "Returns memberships for the group. Default status is ACCEPTED (public). " +
+            "Non-ACCEPTED statuses (e.g. PENDING) require an ADMIN membership on the group.",
     )
     @ApiResponses(
         value = [
@@ -73,10 +74,21 @@ class InterestGroupMembershipController(
     fun listMembershipsInGroup(
         @PathVariable interestGroupId: UUID,
         @RequestParam(required = false)
-        @Parameter(description = "Optional role filter among ACCEPTED memberships")
+        @Parameter(description = "Optional role filter")
         role: InterestGroupRole? = null,
+        @RequestParam(required = false)
+        @Parameter(description = "Membership status filter; defaults to ACCEPTED")
+        status: MembershipStatus? = null,
+        @AuthenticationPrincipal jwt: Jwt?,
     ): ResponseEntity<List<InterestGroupMembershipResponse>> =
-        ResponseEntity.ok(interestGroupMembershipService.listMembershipsInGroup(interestGroupId, role))
+        ResponseEntity.ok(
+            interestGroupMembershipService.listMembershipsInGroup(
+                interestGroupId,
+                role,
+                status,
+                jwt,
+            ),
+        )
 
     @GetMapping("/users/{userId}/memberships")
     @Operation(

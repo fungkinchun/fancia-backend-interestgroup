@@ -117,19 +117,34 @@ class InterestGroupMembershipService(
     fun listMembershipsInGroup(
         interestGroupId: UUID,
         role: InterestGroupRole? = null,
+        status: MembershipStatus? = null,
+        jwt: Jwt? = null,
     ): List<InterestGroupMembershipResponse> {
         interestGroupRepository.findByIdOrNull(interestGroupId)
             ?: throw InterestGroupNotFoundException(interestGroupId)
+        val effectiveStatus = status ?: MembershipStatus.ACCEPTED
+        if (effectiveStatus != MembershipStatus.ACCEPTED) {
+            val currentUserId = jwt?.getClaimAsString("userId")?.let { UUID.fromString(it) }
+                ?: throw InvalidAuthenticationException()
+            val isAdmin = interestGroupMembershipRepository.existsByIdInterestGroupIdAndIdUserIdAndRole(
+                interestGroupId,
+                currentUserId,
+                InterestGroupRole.ADMIN,
+            )
+            if (!isAdmin) {
+                throw InterestGroupMembershipAccessDeniedException(interestGroupId, currentUserId)
+            }
+        }
         val memberships = if (role != null) {
             interestGroupMembershipRepository.findByIdInterestGroupIdAndRoleAndStatus(
                 interestGroupId,
                 role,
-                MembershipStatus.ACCEPTED,
+                effectiveStatus,
             )
         } else {
             interestGroupMembershipRepository.findByIdInterestGroupIdAndStatus(
                 interestGroupId,
-                MembershipStatus.ACCEPTED,
+                effectiveStatus,
             )
         }
         return memberships.map { it.toDto() }
