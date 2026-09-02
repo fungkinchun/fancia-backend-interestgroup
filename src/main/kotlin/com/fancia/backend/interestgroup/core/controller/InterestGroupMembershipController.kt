@@ -16,7 +16,6 @@ import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.web.PageableDefault
 import org.springframework.http.ResponseEntity
-import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.oauth2.jwt.Jwt
 import org.springframework.web.bind.annotation.*
@@ -49,7 +48,11 @@ class InterestGroupMembershipController(
     }
 
     @PatchMapping("/{interestGroupId}/memberships/{userId}")
-    @PreAuthorize("hasAuthority('SCOPE_interest_group_membership.update')")
+    @Operation(
+        summary = "Update interest group membership",
+        description = "Admins can change another member's status (accept, deny, ban). " +
+            "Members may only set their own status to WITHDREW. Requires a signed-in user.",
+    )
     fun updateInterestGroupMembership(
         @PathVariable interestGroupId: UUID,
         @PathVariable userId: UUID,
