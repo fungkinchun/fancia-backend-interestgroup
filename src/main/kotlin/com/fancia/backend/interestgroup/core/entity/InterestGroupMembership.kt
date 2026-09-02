@@ -35,7 +35,7 @@ class InterestGroupMembership(
 
     @Enumerated(EnumType.STRING)
     @Column(name = "role")
-    var role: InterestGroupRole = InterestGroupRole.ADMIN
+    var role: InterestGroupRole = InterestGroupRole.MEMBER
     var joinedAt: LocalDateTime? = null
 
     @Enumerated(EnumType.STRING)

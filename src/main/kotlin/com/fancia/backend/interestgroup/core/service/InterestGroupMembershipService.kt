@@ -53,7 +53,7 @@ class InterestGroupMembershipService(
             interestGroupId = interestGroupId,
             userId = currentUserId
         )
-        // Join requests start PENDING; joinedAt is set only when status becomes ACCEPTED.
+        membership.role = InterestGroupRole.MEMBER
         membership.status = MembershipStatus.PENDING
         membership.joinedAt = null
         return interestGroupMembershipRepository.save(membership).toDto()

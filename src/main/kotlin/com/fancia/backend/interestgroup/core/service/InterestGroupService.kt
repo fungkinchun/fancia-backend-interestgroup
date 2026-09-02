@@ -1,6 +1,8 @@
 package com.fancia.backend.interestgroup.core.service
 
 import com.fancia.backend.interestgroup.core.entity.InterestGroup
+import com.fancia.backend.interestgroup.core.entity.InterestGroupMembership
+import com.fancia.backend.interestgroup.core.entity.InterestGroupMembershipId
 import com.fancia.backend.interestgroup.core.repository.InterestGroupMembershipRepository
 import com.fancia.backend.interestgroup.core.repository.InterestGroupRepository
 import com.fancia.backend.interestgroup.external.CommonServiceClient
@@ -15,6 +17,7 @@ import com.fancia.backend.shared.common.tag.core.dto.TagItemRequest
 import com.fancia.backend.shared.interestgroup.core.dto.CreateInterestGroupRequest
 import com.fancia.backend.shared.interestgroup.core.dto.InterestGroupResponse
 import com.fancia.backend.shared.interestgroup.core.dto.UpdateInterestGroupRequest
+import com.fancia.backend.shared.interestgroup.core.enums.InterestGroupRole
 import com.fancia.backend.shared.interestgroup.core.enums.MembershipStatus
 import com.fancia.backend.shared.interestgroup.core.exception.InterestGroupMembershipNotFoundException
 import com.fancia.backend.shared.interestgroup.core.exception.InterestGroupNotFoundException
@@ -26,6 +29,7 @@ import org.springframework.data.domain.Pageable
 import org.springframework.security.oauth2.jwt.Jwt
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.LocalDateTime
 import java.util.*
 
 @Service
@@ -111,7 +115,19 @@ class InterestGroupService(
             it.links.clear()
             it.links.addAll(request.links.map { link -> Link(type = link.type, url = link.url) })
             val interestGroup = interestGroupRepository.save(it)
-            return interestGroup.toDto(0)
+            val ownerMembership = InterestGroupMembership().apply {
+                this.interestGroup = interestGroup
+                this.id = InterestGroupMembershipId(
+                    interestGroupId = interestGroup.id!!,
+                    userId = currentUserId,
+                )
+                this.role = InterestGroupRole.ADMIN
+                this.status = MembershipStatus.ACCEPTED
+                this.joinedAt = LocalDateTime.now()
+            }
+            interestGroup.memberships.add(ownerMembership)
+            val saved = interestGroupRepository.save(interestGroup)
+            return saved.toDto(1)
         }
     }
 
