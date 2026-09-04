@@ -20,6 +20,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories
         "com.fancia.backend.shared.common.core.entity",
         "com.fancia.backend.shared.common.moderation.core.entity",
         "com.fancia.backend.shared.common.saved.core.entity",
+        "com.fancia.backend.shared.event.core.entity",
     ]
 )
 @EnableJpaRepositories(

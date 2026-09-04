@@ -21,6 +21,7 @@ interface InterestGroupRepository : JpaRepository<InterestGroup, UUID> {
         OR trgm_word_similarity(:description, g.description) = true
     )
     AND (:filterByTagIds = false OR EXISTS (SELECT tag FROM g.tags tag WHERE tag IN :tagIds))
+    AND (:filterByGroupIds = false OR g.id IN :groupIds)
     GROUP BY g
 """,
     )
@@ -29,12 +30,30 @@ interface InterestGroupRepository : JpaRepository<InterestGroup, UUID> {
         @Param("description") description: String,
         @Param("filterByTagIds") filterByTagIds: Boolean,
         @Param("tagIds") tagIds: Collection<UUID>,
+        @Param("filterByGroupIds") filterByGroupIds: Boolean,
+        @Param("groupIds") groupIds: Collection<UUID>,
         pageable: Pageable,
     ): Page<InterestGroup>
 
-    @Query("SELECT DISTINCT g FROM InterestGroup g JOIN g.tags tag WHERE tag IN :tagIds")
+    @Query(
+        """
+        SELECT DISTINCT g FROM InterestGroup g
+        JOIN g.tags tag
+        WHERE tag IN :tagIds
+          AND (:filterByGroupIds = false OR g.id IN :groupIds)
+        """,
+    )
     fun findByTagIdIn(
         @Param("tagIds") tagIds: Collection<UUID>,
+        @Param("filterByGroupIds") filterByGroupIds: Boolean,
+        @Param("groupIds") groupIds: Collection<UUID>,
+        pageable: Pageable,
+    ): Page<InterestGroup>
+
+    @Query("SELECT g FROM InterestGroup g WHERE (:filterByGroupIds = false OR g.id IN :groupIds)")
+    fun findAllFiltered(
+        @Param("filterByGroupIds") filterByGroupIds: Boolean,
+        @Param("groupIds") groupIds: Collection<UUID>,
         pageable: Pageable,
     ): Page<InterestGroup>
 

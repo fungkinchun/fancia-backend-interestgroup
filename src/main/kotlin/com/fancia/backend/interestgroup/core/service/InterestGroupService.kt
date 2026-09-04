@@ -3,6 +3,7 @@ package com.fancia.backend.interestgroup.core.service
 import com.fancia.backend.interestgroup.core.entity.InterestGroup
 import com.fancia.backend.interestgroup.core.entity.InterestGroupMembership
 import com.fancia.backend.interestgroup.core.entity.InterestGroupMembershipId
+import com.fancia.backend.interestgroup.core.repository.EventOccurrenceRepository
 import com.fancia.backend.interestgroup.core.repository.InterestGroupMembershipRepository
 import com.fancia.backend.interestgroup.core.repository.InterestGroupRepository
 import com.fancia.backend.interestgroup.external.CommonServiceClient
@@ -38,6 +39,7 @@ import java.util.*
 class InterestGroupService(
     private val interestGroupRepository: InterestGroupRepository,
     private val interestGroupMembershipRepository: InterestGroupMembershipRepository,
+    private val eventOccurrenceRepository: EventOccurrenceRepository,
     private val commonServiceClient: CommonServiceClient,
     private val savedResourceService: SavedResourceService,
 ) {
@@ -95,18 +97,36 @@ class InterestGroupService(
         name: String?,
         description: String?,
         tagIds: List<UUID>?,
+        hasUpcomingEvents: Boolean,
+        availableFrom: LocalDateTime?,
+        availableTo: LocalDateTime?,
         pageable: Pageable
     ): Page<InterestGroupResponse> {
+        val groupIdFilter = resolveGroupIdFilter(hasUpcomingEvents, availableFrom, availableTo)
+        if (groupIdFilter.active && groupIdFilter.ids.isEmpty()) {
+            return PageImpl(emptyList(), pageable, 0)
+        }
+
         val trimmedName = name?.trim().orEmpty()
         val trimmedDescription = description?.trim().orEmpty()
         val hasText = trimmedName.isNotEmpty() || trimmedDescription.isNotEmpty()
         val hasTagIds = !tagIds.isNullOrEmpty()
 
         val groups = when {
-            !hasText && !hasTagIds -> interestGroupRepository.findAll(pageable)
+            !hasText && !hasTagIds ->
+                interestGroupRepository.findAllFiltered(
+                    groupIdFilter.active,
+                    groupIdFilter.ids,
+                    pageable,
+                )
 
             !hasText && hasTagIds ->
-                interestGroupRepository.findByTagIdIn(tagIds!!, pageable)
+                interestGroupRepository.findByTagIdIn(
+                    tagIds!!,
+                    groupIdFilter.active,
+                    groupIdFilter.ids,
+                    pageable,
+                )
 
             else ->
                 interestGroupRepository.search(
@@ -114,6 +134,8 @@ class InterestGroupService(
                     trimmedDescription,
                     hasTagIds,
                     tagIds.orEmpty(),
+                    groupIdFilter.active,
+                    groupIdFilter.ids,
                     pageable,
                 )
         }
@@ -123,6 +145,32 @@ class InterestGroupService(
             group.toDto(counts[group.id] ?: 0L)
         }
         return PageImpl(responses, pageable, groups.totalElements)
+    }
+
+    private fun resolveGroupIdFilter(
+        hasUpcomingEvents: Boolean,
+        availableFrom: LocalDateTime?,
+        availableTo: LocalDateTime?,
+    ): GroupIdFilter {
+        if (!hasUpcomingEvents) {
+            return GroupIdFilter.inactive()
+        }
+        val windowFrom = availableFrom ?: LocalDateTime.now()
+        val ids = eventOccurrenceRepository
+            .findInterestGroupIdsWithUpcomingPublicEvents(windowFrom, availableTo)
+            .toList()
+        return GroupIdFilter(active = true, ids = ids)
+    }
+
+    private data class GroupIdFilter(
+        val active: Boolean,
+        val ids: List<UUID>,
+    ) {
+        companion object {
+            private val PLACEHOLDER = UUID(0L, 0L)
+
+            fun inactive() = GroupIdFilter(active = false, ids = listOf(PLACEHOLDER))
+        }
     }
 
     fun findByIdAndCreatedBy(id: UUID, createdBy: UUID): InterestGroup? {

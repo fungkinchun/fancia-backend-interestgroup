@@ -73,7 +73,7 @@ class InterestGroupController(
         return ResponseEntity.ok(interestGroupService.update(id, request, jwt))
     }
 
-    @GetMapping("/saved")
+    @GetMapping("/me/saved")
     @Operation(summary = "List interest groups saved by the current user")
     fun listSaved(
         @AuthenticationPrincipal jwt: Jwt,
@@ -127,10 +127,29 @@ class InterestGroupController(
         @RequestParam(required = false)
         @Parameter(description = "Filter by tag ids (entities matching any of the ids)")
         tagIds: List<UUID> = emptyList(),
+        @RequestParam(required = false, defaultValue = "false")
+        @Parameter(description = "When true, only groups hosting upcoming public events in the availability window")
+        hasUpcomingEvents: Boolean = false,
+        @RequestParam(required = false)
+        @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME)
+        @Parameter(description = "Availability window start (defaults to now)")
+        availableFrom: java.time.LocalDateTime? = null,
+        @RequestParam(required = false)
+        @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME)
+        @Parameter(description = "Availability window end (exclusive)")
+        availableTo: java.time.LocalDateTime? = null,
         @PageableDefault(size = 20)
         pageable: Pageable
     ): ResponseEntity<Page<InterestGroupResponse>> {
-        val groups = interestGroupService.findAll(name, description, tagIds, pageable)
+        val groups = interestGroupService.findAll(
+            name,
+            description,
+            tagIds,
+            hasUpcomingEvents,
+            availableFrom,
+            availableTo,
+            pageable,
+        )
         return ResponseEntity.ok(groups)
     }
 }
