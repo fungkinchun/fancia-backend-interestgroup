@@ -2,6 +2,7 @@ package com.fancia.backend.interestgroup.mapper
 
 import com.fancia.backend.interestgroup.core.entity.InterestGroup
 import com.fancia.backend.interestgroup.core.entity.InterestGroupMembership
+import com.fancia.backend.shared.common.core.enums.ResourceVisibility
 import com.fancia.backend.shared.common.social.core.dto.LinkResponse
 import com.fancia.backend.shared.common.social.core.entity.Link
 import com.fancia.backend.shared.interestgroup.core.dto.CreateInterestGroupMembershipRequest
@@ -22,16 +23,20 @@ fun InterestGroup.toDto(memberCount: Long = 0): InterestGroupResponse =
         tags = tags,
         memberCount = memberCount,
         links = links.map { it.toDto() },
+        visibility = visibility,
     )
 
 fun CreateInterestGroupRequest.toEntity(): InterestGroup =
     InterestGroup().apply {
         name = this@toEntity.name
         description = this@toEntity.description
+        visibility = this@toEntity.visibility ?: ResourceVisibility.PUBLIC
     }
 
 fun UpdateInterestGroupRequest.toEntity(interestGroup: InterestGroup): InterestGroup {
+    interestGroup.name = name
     interestGroup.description = description
+    interestGroup.visibility = visibility ?: interestGroup.visibility
     return interestGroup
 }
 
@@ -45,6 +50,7 @@ fun InterestGroupResponse.toEntity(): InterestGroup =
         createdAt = this@toEntity.createdAt
         tags = this@toEntity.tags.toMutableSet()
         links = this@toEntity.links.map { Link(type = it.type, url = it.url) }.toMutableSet()
+        visibility = this@toEntity.visibility
     }
 
 fun InterestGroupMembership.toDto(): InterestGroupMembershipResponse =

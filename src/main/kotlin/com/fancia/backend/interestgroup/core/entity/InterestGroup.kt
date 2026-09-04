@@ -1,6 +1,7 @@
 package com.fancia.backend.interestgroup.core.entity
 
 import com.fancia.backend.shared.common.core.entity.AbstractEntity
+import com.fancia.backend.shared.common.core.enums.ResourceVisibility
 import com.fancia.backend.shared.common.social.core.entity.Link
 import jakarta.persistence.*
 import java.util.*
@@ -16,6 +17,10 @@ class InterestGroup : AbstractEntity() {
 
     @Column(nullable = false, length = 4000)
     var description: String = ""
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 16)
+    var visibility: ResourceVisibility = ResourceVisibility.PUBLIC
 
     @OneToMany(mappedBy = "interestGroup", cascade = [CascadeType.ALL], orphanRemoval = true)
     val memberships: MutableSet<InterestGroupMembership> = mutableSetOf<InterestGroupMembership>()

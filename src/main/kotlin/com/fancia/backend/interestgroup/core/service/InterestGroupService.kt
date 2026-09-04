@@ -10,6 +10,7 @@ import com.fancia.backend.interestgroup.mapper.toDto
 import com.fancia.backend.interestgroup.mapper.toEntity
 import com.fancia.backend.shared.common.core.exception.InvalidAuthenticationException
 import com.fancia.backend.shared.common.core.exception.PremiumFeatureLimitException
+import com.fancia.backend.shared.common.core.enums.ResourceVisibility
 import com.fancia.backend.shared.common.core.utils.Slugify
 import com.fancia.backend.shared.common.social.core.entity.Link
 import com.fancia.backend.shared.common.tag.core.dto.CreateTagsRequest
@@ -117,9 +118,11 @@ class InterestGroupService(
                 )
         }
         val counts = acceptedMemberCounts(groups.content.mapNotNull { it.id })
-        return groups.map { group ->
+        val visible = groups.content.filter { it.visibility == ResourceVisibility.PUBLIC }
+        val responses = visible.map { group ->
             group.toDto(counts[group.id] ?: 0L)
         }
+        return PageImpl(responses, pageable, groups.totalElements)
     }
 
     fun findByIdAndCreatedBy(id: UUID, createdBy: UUID): InterestGroup? {
