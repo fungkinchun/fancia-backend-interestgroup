@@ -17,6 +17,7 @@ import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.repository.findByIdOrNull
 import com.fancia.backend.interestgroup.external.UserServiceClient
+import org.springframework.beans.factory.ObjectProvider
 import org.springframework.data.domain.PageImpl
 import org.springframework.security.oauth2.jwt.Jwt
 import org.springframework.stereotype.Service
@@ -29,6 +30,7 @@ class InterestGroupMembershipService(
     private val interestGroupRepository: InterestGroupRepository,
     private val interestGroupMembershipRepository: InterestGroupMembershipRepository,
     private val userServiceClient: UserServiceClient,
+    private val interestGroupService: ObjectProvider<InterestGroupService>,
 ) {
     @Transactional
     fun create(
@@ -56,7 +58,9 @@ class InterestGroupMembershipService(
         membership.role = InterestGroupRole.MEMBER
         membership.status = MembershipStatus.PENDING
         membership.joinedAt = null
-        return interestGroupMembershipRepository.save(membership).toDto()
+        val saved = interestGroupMembershipRepository.save(membership).toDto()
+        interestGroupService.ifAvailable?.invalidateMembershipCaches(interestGroupId)
+        return saved
     }
 
     @Transactional
@@ -90,15 +94,19 @@ class InterestGroupMembershipService(
         if (membership.status == MembershipStatus.ACCEPTED && previousStatus != MembershipStatus.ACCEPTED) {
             membership.joinedAt = LocalDateTime.now()
         }
-        return interestGroupMembershipRepository.save(membership).toDto()
+        val saved = interestGroupMembershipRepository.save(membership).toDto()
+        interestGroupService.ifAvailable?.invalidateMembershipCaches(interestGroupId)
+        return saved
     }
 
     @Transactional
     fun removeMemberFromAllGroups(userId: UUID) {
         val memberships = interestGroupMembershipRepository.findByIdUserId(userId)
+        val groupIds = memberships.mapNotNull { it.id?.interestGroupId }.toSet()
         memberships.forEach {
             interestGroupMembershipRepository.delete(it)
         }
+        groupIds.forEach { interestGroupService.ifAvailable?.invalidateMembershipCaches(it) }
     }
 
     fun findAllForUser(

@@ -5,6 +5,12 @@ spring:
   config:
     import:
       - optional:file:.env[.properties]
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
+      - org.springframework.boot.data.redis.autoconfigure.RedisAutoConfiguration
+      - org.springframework.boot.data.redis.autoconfigure.RedisRepositoriesAutoConfiguration
   security:
     oauth2:
       resourceserver:
@@ -52,6 +58,7 @@ spring:
             required: true
           ssl:
             trust: smtp.gmail.com
+
   cloud:
     aws:
       secretsmanager:

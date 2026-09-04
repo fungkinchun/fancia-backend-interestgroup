@@ -1,5 +1,9 @@
 package com.fancia.backend.interestgroup.core.service
 
+import tools.jackson.core.type.TypeReference
+import com.fancia.backend.shared.common.redis.CacheKeys
+import com.fancia.backend.shared.common.redis.CachedPage
+import com.fancia.backend.shared.common.redis.RedisQueryCache
 import com.fancia.backend.interestgroup.core.entity.InterestGroup
 import com.fancia.backend.interestgroup.core.entity.InterestGroupMembership
 import com.fancia.backend.interestgroup.core.entity.InterestGroupMembershipId
@@ -26,12 +30,14 @@ import com.fancia.backend.shared.interestgroup.core.exception.InterestGroupNotFo
 import com.fancia.backend.shared.user.core.support.PremiumLimits
 import com.fancia.backend.shared.user.core.support.isPremiumClaim
 import jakarta.validation.Valid
+import org.springframework.beans.factory.ObjectProvider
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.Pageable
 import org.springframework.security.oauth2.jwt.Jwt
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.Duration
 import java.time.LocalDateTime
 import java.util.*
 
@@ -42,6 +48,7 @@ class InterestGroupService(
     private val eventOccurrenceRepository: EventOccurrenceRepository,
     private val commonServiceClient: CommonServiceClient,
     private val savedResourceService: SavedResourceService,
+    private val redisQueryCache: ObjectProvider<RedisQueryCache>,
 ) {
     fun listSavedInterestGroups(jwt: Jwt, pageable: Pageable): Page<InterestGroupResponse> {
         val page = savedResourceService.listSavedPage(jwt, pageable)
@@ -50,7 +57,7 @@ class InterestGroupService(
         }
         val ids = page.content.map { it.id.resourceId }
         val groupsById = interestGroupRepository.findAllById(ids).associateBy { it.id }
-        val counts = acceptedMemberCounts(groupsById.keys)
+        val counts = acceptedMemberCounts(groupsById.keys.filterNotNull())
         val responses = ids.mapNotNull { id ->
             val group = groupsById[id] ?: return@mapNotNull null
             group.toDto(counts[id] ?: 0L).also {
@@ -61,6 +68,18 @@ class InterestGroupService(
     }
 
     fun findById(id: UUID): InterestGroupResponse {
+        val cache = redisQueryCache.ifAvailable
+        if (cache != null) {
+            return cache.getOrLoad(
+                detailKey(id),
+                LIST_TTL,
+                object : TypeReference<InterestGroupResponse>() {},
+            ) {
+                interestGroupRepository.findById(id)
+                    .map { it.toDto(acceptedMemberCount(it.id!!)) }
+                    .orElseThrow { InterestGroupNotFoundException(id) }
+            }
+        }
         return interestGroupRepository.findById(id)
             .map { it.toDto(acceptedMemberCount(it.id!!)) }
             .orElseThrow { InterestGroupNotFoundException(id) }
@@ -101,6 +120,35 @@ class InterestGroupService(
         availableFrom: LocalDateTime?,
         availableTo: LocalDateTime?,
         pageable: Pageable
+    ): Page<InterestGroupResponse> {
+        val cache = redisQueryCache.ifAvailable
+        if (cache != null) {
+            val key = LIST_PREFIX + CacheKeys.hash(
+                name?.trim(), description?.trim(), tagIds, hasUpcomingEvents,
+                availableFrom, availableTo, pageable.pageNumber, pageable.pageSize,
+            )
+            val cached = cache.getOrLoad(
+                key,
+                LIST_TTL,
+                object : TypeReference<CachedPage<InterestGroupResponse>>() {},
+            ) {
+                CachedPage.from(
+                    loadList(name, description, tagIds, hasUpcomingEvents, availableFrom, availableTo, pageable),
+                )
+            }
+            return cached.toPage(pageable)
+        }
+        return loadList(name, description, tagIds, hasUpcomingEvents, availableFrom, availableTo, pageable)
+    }
+
+    private fun loadList(
+        name: String?,
+        description: String?,
+        tagIds: List<UUID>?,
+        hasUpcomingEvents: Boolean,
+        availableFrom: LocalDateTime?,
+        availableTo: LocalDateTime?,
+        pageable: Pageable,
     ): Page<InterestGroupResponse> {
         val groupIdFilter = resolveGroupIdFilter(hasUpcomingEvents, availableFrom, availableTo)
         if (groupIdFilter.active && groupIdFilter.ids.isEmpty()) {
@@ -209,6 +257,7 @@ class InterestGroupService(
             }
             interestGroup.memberships.add(ownerMembership)
             val saved = interestGroupRepository.save(interestGroup)
+            invalidateGroupCaches(saved.id!!)
             return saved.toDto(1)
         }
     }
@@ -224,6 +273,7 @@ class InterestGroupService(
             it.links.clear()
             it.links.addAll(request.links.map { link -> Link(type = link.type, url = link.url) })
             val saved = interestGroupRepository.save(it)
+            invalidateGroupCaches(saved.id!!)
             return saved.toDto(acceptedMemberCount(saved.id!!))
         }
     }
@@ -236,25 +286,57 @@ class InterestGroupService(
         }
         if (groupsWithTag.isNotEmpty()) {
             interestGroupRepository.saveAll(groupsWithTag)
+            redisQueryCache.ifAvailable?.evictByPrefix(LIST_PREFIX)
+            groupsWithTag.mapNotNull { it.id }.forEach { invalidateDetail(it) }
         }
     }
 
-    private fun acceptedMemberCount(groupId: UUID): Long =
-        interestGroupMembershipRepository.countByIdInterestGroupIdAndStatus(
-            groupId,
-            MembershipStatus.ACCEPTED,
-        )
+    fun invalidateMembershipCaches(groupId: UUID) {
+        invalidateGroupCaches(groupId)
+    }
+
+    private fun acceptedMemberCount(groupId: UUID): Long {
+        val cache = redisQueryCache.ifAvailable
+            ?: return interestGroupMembershipRepository.countByIdInterestGroupIdAndStatus(
+                groupId,
+                MembershipStatus.ACCEPTED,
+            )
+        return cache.getOrLoad(
+            countKey(groupId),
+            COUNT_TTL,
+            object : TypeReference<Long>() {},
+        ) {
+            interestGroupMembershipRepository.countByIdInterestGroupIdAndStatus(
+                groupId,
+                MembershipStatus.ACCEPTED,
+            )
+        }
+    }
 
     private fun acceptedMemberCounts(groupIds: Collection<UUID>): Map<UUID, Long> {
         if (groupIds.isEmpty()) return emptyMap()
-        return interestGroupMembershipRepository
+        val cache = redisQueryCache.ifAvailable
+        if (cache == null) {
+            return loadAcceptedMemberCounts(groupIds)
+        }
+        val key = COUNTS_PREFIX + CacheKeys.hash(groupIds)
+        return cache.getOrLoad(
+            key,
+            COUNT_TTL,
+            object : TypeReference<Map<UUID, Long>>() {},
+        ) {
+            loadAcceptedMemberCounts(groupIds)
+        }
+    }
+
+    private fun loadAcceptedMemberCounts(groupIds: Collection<UUID>): Map<UUID, Long> =
+        interestGroupMembershipRepository
             .countByInterestGroupIdInAndStatus(groupIds, MembershipStatus.ACCEPTED)
             .associate { row ->
                 val id = row[0] as UUID
                 val count = (row[1] as Number).toLong()
                 id to count
             }
-    }
 
     private fun applyTags(tags: MutableSet<UUID>, requestTags: Set<TagItemRequest>) {
         tags.clear()
@@ -268,4 +350,29 @@ class InterestGroupService(
 
     private fun allocateGroupSlug(name: String): String =
         Slugify.allocateUnique(name, fallback = "group") { interestGroupRepository.existsBySlug(it) }
+
+    private fun detailKey(id: UUID) = "$DETAIL_PREFIX$id"
+    private fun countKey(id: UUID) = "$COUNT_PREFIX$id"
+
+    private fun invalidateDetail(groupId: UUID) {
+        val cache = redisQueryCache.ifAvailable ?: return
+        cache.evict(detailKey(groupId))
+        cache.evict(countKey(groupId))
+    }
+
+    private fun invalidateGroupCaches(groupId: UUID) {
+        val cache = redisQueryCache.ifAvailable ?: return
+        invalidateDetail(groupId)
+        cache.evictByPrefix(LIST_PREFIX)
+        cache.evictByPrefix(COUNTS_PREFIX)
+    }
+
+    companion object {
+        private const val LIST_PREFIX = "ig:list:"
+        private const val DETAIL_PREFIX = "ig:detail:"
+        private const val COUNT_PREFIX = "ig:count:"
+        private const val COUNTS_PREFIX = "ig:counts:"
+        private val LIST_TTL = Duration.ofMinutes(3)
+        private val COUNT_TTL = Duration.ofSeconds(60)
+    }
 }
