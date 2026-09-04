@@ -36,6 +36,13 @@ interface InterestGroupMembershipRepository : JpaRepository<InterestGroupMembers
         role: InterestGroupRole = InterestGroupRole.ADMIN
     ): Boolean
 
+    fun existsByIdInterestGroupIdAndIdUserIdAndRoleAndStatus(
+        interestGroupId: UUID,
+        userId: UUID,
+        role: InterestGroupRole,
+        status: MembershipStatus,
+    ): Boolean
+
     fun existsByIdInterestGroupIdAndIdUserIdAndStatus(
         interestGroupId: UUID,
         userId: UUID,
@@ -55,6 +62,12 @@ interface InterestGroupMembershipRepository : JpaRepository<InterestGroupMembers
 
     fun countByIdInterestGroupIdAndStatus(
         interestGroupId: UUID,
+        status: MembershipStatus,
+    ): Long
+
+    fun countByIdInterestGroupIdAndRoleAndStatus(
+        interestGroupId: UUID,
+        role: InterestGroupRole,
         status: MembershipStatus,
     ): Long
 

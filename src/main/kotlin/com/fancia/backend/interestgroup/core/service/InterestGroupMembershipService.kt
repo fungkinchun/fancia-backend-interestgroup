@@ -71,18 +71,29 @@ class InterestGroupMembershipService(
     ): InterestGroupMembershipResponse {
         val currentUserId = jwt.getClaimAsString("userId")?.let { UUID.fromString(it) }
             ?: throw InvalidAuthenticationException()
+        if (request.status == null && request.role == null) {
+            throw InterestGroupStatusChangeAccessDeniedException(
+                message = "Provide a status and/or role to update",
+            )
+        }
         interestGroupMembershipRepository.existsByIdInterestGroupIdAndIdUserId(interestGroupId, userId)
                 || throw InterestGroupMembershipNotFoundException(interestGroupId, userId)
-        val isAdmin = interestGroupMembershipRepository.existsByIdInterestGroupIdAndIdUserIdAndRole(
+        val isAcceptedAdmin = interestGroupMembershipRepository.existsByIdInterestGroupIdAndIdUserIdAndRoleAndStatus(
             interestGroupId,
             currentUserId,
-            InterestGroupRole.ADMIN
+            InterestGroupRole.ADMIN,
+            MembershipStatus.ACCEPTED,
         )
+        if (request.role != null && !isAcceptedAdmin) {
+            throw InterestGroupRoleChangeAccessDeniedException(
+                message = "Only accepted admins can promote or demote members",
+            )
+        }
         when {
-            !isAdmin && currentUserId != userId ->
+            !isAcceptedAdmin && currentUserId != userId ->
                 throw InterestGroupMembershipAccessDeniedException(interestGroupId, currentUserId)
 
-            !isAdmin && request.status != MembershipStatus.WITHDREW ->
+            !isAcceptedAdmin && request.status != MembershipStatus.WITHDREW ->
                 throw InterestGroupStatusChangeAccessDeniedException()
         }
         val membership = interestGroupMembershipRepository.findByIdInterestGroupIdAndIdUserId(
@@ -90,13 +101,58 @@ class InterestGroupMembershipService(
             userId
         ) ?: throw InterestGroupMembershipNotFoundException(interestGroupId, userId)
         val previousStatus = membership.status
-        request.toEntity(membership)
+        request.role?.let { newRole ->
+            applyRoleChange(
+                interestGroupId = interestGroupId,
+                membershipUserId = userId,
+                membership = membership,
+                newRole = newRole,
+                requestedStatus = request.status,
+            )
+        }
+        request.status?.let { membership.status = it }
         if (membership.status == MembershipStatus.ACCEPTED && previousStatus != MembershipStatus.ACCEPTED) {
             membership.joinedAt = LocalDateTime.now()
         }
         val saved = interestGroupMembershipRepository.save(membership).toDto()
         interestGroupService.ifAvailable?.invalidateMembershipCaches(interestGroupId)
         return saved
+    }
+
+    private fun applyRoleChange(
+        interestGroupId: UUID,
+        membershipUserId: UUID,
+        membership: com.fancia.backend.interestgroup.core.entity.InterestGroupMembership,
+        newRole: InterestGroupRole,
+        requestedStatus: MembershipStatus?,
+    ) {
+        if (newRole == membership.role) return
+        val group = interestGroupRepository.findByIdOrNull(interestGroupId)
+            ?: throw InterestGroupNotFoundException(interestGroupId)
+        if (group.createdBy == membershipUserId) {
+            throw InterestGroupRoleChangeAccessDeniedException(
+                message = "The group organiser cannot have their admin role changed",
+            )
+        }
+        val effectiveStatus = requestedStatus ?: membership.status
+        if (newRole == InterestGroupRole.ADMIN && effectiveStatus != MembershipStatus.ACCEPTED) {
+            throw InterestGroupRoleChangeAccessDeniedException(
+                message = "Only accepted members can be promoted to admin",
+            )
+        }
+        if (newRole == InterestGroupRole.MEMBER && membership.role == InterestGroupRole.ADMIN) {
+            val adminCount = interestGroupMembershipRepository.countByIdInterestGroupIdAndRoleAndStatus(
+                interestGroupId,
+                InterestGroupRole.ADMIN,
+                MembershipStatus.ACCEPTED,
+            )
+            if (adminCount <= 1L) {
+                throw InterestGroupRoleChangeAccessDeniedException(
+                    message = "Cannot demote the last admin",
+                )
+            }
+        }
+        membership.role = newRole
     }
 
     @Transactional
@@ -162,7 +218,6 @@ class InterestGroupMembershipService(
         val viewerId = jwt?.getClaimAsString("userId")?.let { UUID.fromString(it) }
         if (viewerId == targetUserId) return true
         val user = runCatching { userServiceClient.getUser(targetUserId) }.getOrNull() ?: return false
-        // ProfileResponse applies privacy: null groupsCount means section hidden.
         return user.groupsCount != null
     }
 }

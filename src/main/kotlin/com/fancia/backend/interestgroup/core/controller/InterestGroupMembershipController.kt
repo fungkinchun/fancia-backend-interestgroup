@@ -50,8 +50,9 @@ class InterestGroupMembershipController(
     @PatchMapping("/{interestGroupId}/memberships/{userId}")
     @Operation(
         summary = "Update interest group membership",
-        description = "Admins can change another member's status (accept, deny, ban). " +
-            "Members may only set their own status to WITHDREW. Requires a signed-in user.",
+        description = "Admins can change another member's status (accept, deny, ban) and/or role " +
+            "(promote to ADMIN / demote to MEMBER). Members may only set their own status to WITHDREW. " +
+            "Requires a signed-in user.",
     )
     fun updateInterestGroupMembership(
         @PathVariable interestGroupId: UUID,

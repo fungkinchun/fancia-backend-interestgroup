@@ -66,7 +66,8 @@ fun CreateInterestGroupMembershipRequest.toEntity(): InterestGroupMembership =
     InterestGroupMembership()
 
 fun UpdateInterestGroupMembershipRequest.toEntity(membership: InterestGroupMembership): InterestGroupMembership {
-    membership.status = status
+    status?.let { membership.status = it }
+    role?.let { membership.role = it }
     return membership
 }
 
