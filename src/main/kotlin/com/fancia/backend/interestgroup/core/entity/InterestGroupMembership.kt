@@ -23,7 +23,7 @@ data class InterestGroupMembershipId(
 }
 
 @Entity
-@Table(name = "interest_group_membership")
+@Table(name = "interest_group_memberships")
 class InterestGroupMembership(
     @EmbeddedId
     var id: InterestGroupMembershipId? = null
