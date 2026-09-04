@@ -2,6 +2,8 @@ package com.fancia.backend.interestgroup.core.controller
 
 import com.fancia.backend.interestgroup.core.service.InterestGroupMembershipService
 import com.fancia.backend.interestgroup.core.service.InterestGroupService
+import com.fancia.backend.interestgroup.core.service.SavedResourceService
+import com.fancia.backend.shared.common.saved.core.dto.SavedResourceResponse
 import com.fancia.backend.shared.interestgroup.core.dto.*
 import com.fancia.backend.shared.interestgroup.core.enums.MembershipStatus
 import io.swagger.v3.oas.annotations.Operation
@@ -14,6 +16,7 @@ import jakarta.validation.Valid
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.web.PageableDefault
+import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.oauth2.jwt.Jwt
@@ -26,7 +29,8 @@ import java.util.*
 @SecurityRequirement(name = "bearerAuth")
 class InterestGroupController(
     private val interestGroupService: InterestGroupService,
-    private val interestGroupMembershipService: InterestGroupMembershipService
+    private val interestGroupMembershipService: InterestGroupMembershipService,
+    private val savedResourceService: SavedResourceService,
 ) {
     @Operation(
         summary = "Create interest group",
@@ -69,10 +73,39 @@ class InterestGroupController(
         return ResponseEntity.ok(interestGroupService.update(id, request, jwt))
     }
 
+    @GetMapping("/saved")
+    @Operation(summary = "List interest groups saved by the current user")
+    fun listSaved(
+        @AuthenticationPrincipal jwt: Jwt,
+        @PageableDefault(size = 20) pageable: Pageable,
+    ): ResponseEntity<Page<InterestGroupResponse>> =
+        ResponseEntity.ok(interestGroupService.listSavedInterestGroups(jwt, pageable))
+
+    @PostMapping("/{id}/saved")
+    @Operation(summary = "Save an interest group")
+    fun saveInterestGroup(
+        @PathVariable id: UUID,
+        @AuthenticationPrincipal jwt: Jwt,
+    ): ResponseEntity<SavedResourceResponse> =
+        ResponseEntity.status(HttpStatus.CREATED).body(savedResourceService.save(id, jwt))
+
+    @DeleteMapping("/{id}/saved")
+    @Operation(summary = "Unsave an interest group")
+    fun unsaveInterestGroup(
+        @PathVariable id: UUID,
+        @AuthenticationPrincipal jwt: Jwt,
+    ): ResponseEntity<Void> {
+        savedResourceService.unsave(id, jwt)
+        return ResponseEntity.noContent().build()
+    }
+
     @GetMapping("/{ref}")
     @Operation(summary = "Get interest group by id or slug")
-    fun getInterestGroup(@PathVariable ref: String): ResponseEntity<InterestGroupResponse> {
-        return ResponseEntity.ok(interestGroupService.findByIdOrSlug(ref))
+    fun getInterestGroup(
+        @PathVariable ref: String,
+        @AuthenticationPrincipal jwt: Jwt?,
+    ): ResponseEntity<InterestGroupResponse> {
+        return ResponseEntity.ok(interestGroupService.findByIdOrSlug(ref, jwt))
     }
 
     @GetMapping

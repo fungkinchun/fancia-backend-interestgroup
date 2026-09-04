@@ -18,6 +18,8 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories
     basePackages = [
         "com.fancia.backend.interestgroup.core",
         "com.fancia.backend.shared.common.core.entity",
+        "com.fancia.backend.shared.common.moderation.core.entity",
+        "com.fancia.backend.shared.common.saved.core.entity",
     ]
 )
 @EnableJpaRepositories(

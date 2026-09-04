@@ -25,6 +25,7 @@ import com.fancia.backend.shared.user.core.support.PremiumLimits
 import com.fancia.backend.shared.user.core.support.isPremiumClaim
 import jakarta.validation.Valid
 import org.springframework.data.domain.Page
+import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.Pageable
 import org.springframework.security.oauth2.jwt.Jwt
 import org.springframework.stereotype.Service
@@ -37,16 +38,46 @@ class InterestGroupService(
     private val interestGroupRepository: InterestGroupRepository,
     private val interestGroupMembershipRepository: InterestGroupMembershipRepository,
     private val commonServiceClient: CommonServiceClient,
+    private val savedResourceService: SavedResourceService,
 ) {
+    fun listSavedInterestGroups(jwt: Jwt, pageable: Pageable): Page<InterestGroupResponse> {
+        val page = savedResourceService.listSavedPage(jwt, pageable)
+        if (page.isEmpty) {
+            return PageImpl(emptyList(), pageable, 0)
+        }
+        val ids = page.content.map { it.id.resourceId }
+        val groupsById = interestGroupRepository.findAllById(ids).associateBy { it.id }
+        val counts = acceptedMemberCounts(groupsById.keys)
+        val responses = ids.mapNotNull { id ->
+            val group = groupsById[id] ?: return@mapNotNull null
+            group.toDto(counts[id] ?: 0L).also {
+                it.savedByCurrentUser = true
+            }
+        }
+        return PageImpl(responses, pageable, page.totalElements)
+    }
+
     fun findById(id: UUID): InterestGroupResponse {
         return interestGroupRepository.findById(id)
             .map { it.toDto(acceptedMemberCount(it.id!!)) }
             .orElseThrow { InterestGroupNotFoundException(id) }
     }
 
-    fun findByIdOrSlug(ref: String): InterestGroupResponse {
+    fun findByIdOrSlug(ref: String, jwt: Jwt? = null): InterestGroupResponse {
         val group = resolveByIdOrSlug(ref)
-        return group.toDto(acceptedMemberCount(group.id!!))
+        val response = group.toDto(acceptedMemberCount(group.id!!))
+        enrichSaved(response, jwt)
+        return response
+    }
+
+    private fun enrichSaved(response: InterestGroupResponse, jwt: Jwt?) {
+        val userId = jwt?.getClaimAsString("userId")?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+        val groupId = response.id
+        if (userId == null || groupId == null) {
+            response.savedByCurrentUser = null
+            return
+        }
+        response.savedByCurrentUser = savedResourceService.isSaved(userId, groupId)
     }
 
     fun resolveByIdOrSlug(ref: String): InterestGroup {
