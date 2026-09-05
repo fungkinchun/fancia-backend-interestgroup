@@ -76,9 +76,10 @@ class InterestGroupCommentController(
         targetId: UUID?,
         @PageableDefault(size = 20)
         pageable: Pageable,
+        @AuthenticationPrincipal jwt: Jwt?,
     ): ResponseEntity<Page<CommentResponse>> {
         val scope = resourceId ?: groupId
-        return ResponseEntity.ok(interestGroupCommentService.list(scope, targetId ?: scope, pageable))
+        return ResponseEntity.ok(interestGroupCommentService.list(scope, targetId ?: scope, pageable, jwt))
     }
 
     @Operation(summary = "Like comment")
