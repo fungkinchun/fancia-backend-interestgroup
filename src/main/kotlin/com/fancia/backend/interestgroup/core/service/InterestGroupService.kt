@@ -386,7 +386,10 @@ class InterestGroupService(
         ) {
             return
         }
-        throw InterestGroupNotFoundException(requireNotNull(group.id))
+        if (groupId == null) {
+            throw InterestGroupNotFoundException(group.slug)
+        }
+        throw InterestGroupNotFoundException(groupId)
     }
 
     fun assertCanJoin(group: InterestGroup, jwt: Jwt, invite: String?) {
