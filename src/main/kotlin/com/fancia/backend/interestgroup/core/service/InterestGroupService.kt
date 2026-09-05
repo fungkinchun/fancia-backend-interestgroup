@@ -49,6 +49,7 @@ class InterestGroupService(
     private val eventOccurrenceRepository: EventOccurrenceRepository,
     private val commonServiceClient: CommonServiceClient,
     private val savedResourceService: SavedResourceService,
+    private val blockedResourceService: BlockedResourceService,
     private val redisQueryCache: ObjectProvider<RedisQueryCache>,
 ) {
     fun listSavedInterestGroups(jwt: Jwt, pageable: Pageable): Page<InterestGroupResponse> {
@@ -56,11 +57,17 @@ class InterestGroupService(
         if (page.isEmpty) {
             return PageImpl(emptyList(), pageable, 0)
         }
+        val viewerId = jwtUserId(jwt)
+        val blockedGroups = viewerId?.let { blockedResourceService.blockedInterestGroupIds(it) }.orEmpty()
+        val blockedUsers = viewerId?.let { blockedResourceService.loadBlockedUserIds(it) }.orEmpty()
         val ids = page.content.map { it.id.resourceId }
         val groupsById = interestGroupRepository.findAllById(ids).associateBy { it.id }
         val counts = acceptedMemberCounts(groupsById.keys.filterNotNull())
         val responses = ids.mapNotNull { id ->
+            if (id in blockedGroups) return@mapNotNull null
             val group = groupsById[id] ?: return@mapNotNull null
+            val createdBy = group.createdBy
+            if (createdBy != null && createdBy in blockedUsers) return@mapNotNull null
             group.toDto(counts[id] ?: 0L).also {
                 it.savedByCurrentUser = true
             }
@@ -89,6 +96,7 @@ class InterestGroupService(
     fun findByIdOrSlug(ref: String, jwt: Jwt? = null, invite: String? = null): InterestGroupResponse {
         val group = syncInviteToken(resolveByIdOrSlug(ref))
         assertCanAccess(group, jwt, invite)
+        assertNotBlocked(group, jwt)
         val response = group.toDto(acceptedMemberCount(group.id!!))
         enrichSaved(response, jwt)
         exposeInviteTokenIfCreator(response, group, jwt)
@@ -431,6 +439,23 @@ class InterestGroupService(
 
     private fun jwtUserId(jwt: Jwt?): UUID? =
         jwt?.getClaimAsString("userId")?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+
+    private fun assertNotBlocked(group: InterestGroup, jwt: Jwt?) {
+        if (isBlockedForViewer(group, jwt)) {
+            val groupId = group.id ?: throw InterestGroupNotFoundException(group.slug)
+            throw InterestGroupNotFoundException(groupId)
+        }
+    }
+
+    private fun isBlockedForViewer(group: InterestGroup, jwt: Jwt?): Boolean {
+        val viewerId = jwtUserId(jwt) ?: return false
+        val groupId = group.id
+        if (groupId != null && groupId in blockedResourceService.blockedInterestGroupIds(viewerId)) {
+            return true
+        }
+        val createdBy = group.createdBy ?: return false
+        return createdBy in blockedResourceService.loadBlockedUserIds(viewerId)
+    }
 
     companion object {
         private const val LIST_PREFIX = "ig:list:"

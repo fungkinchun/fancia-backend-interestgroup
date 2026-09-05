@@ -83,6 +83,26 @@ class BlockedResourceService(
         }
     }
 
+    @Transactional(readOnly = true)
+    fun blockedInterestGroupIds(userId: UUID): Set<UUID> =
+        blockedResourceRepository.findAllByIdUserIdAndIdResourceTypeIn(
+            userId,
+            listOf(BlockedResourceType.INTEREST_GROUP),
+        ).map { it.id.resourceId }.toSet()
+
+    fun loadBlockedUserIds(userId: UUID): Set<UUID> {
+        return try {
+            val response = userInternalClient.getBlocked(
+                userId,
+                listOf(BlockedResourceType.USER),
+            )
+            response.blocked[BlockedResourceType.USER].orEmpty().toSet()
+        } catch (ex: FeignException) {
+            log.warn("Failed to load blocked USER for userId={}", userId, ex)
+            emptySet()
+        }
+    }
+
     private fun validateOwnedType(resourceType: BlockedResourceType) {
         if (resourceType != BlockedResourceType.INTEREST_GROUP) {
             throw UnsupportedBlockedResourceTypeException()
