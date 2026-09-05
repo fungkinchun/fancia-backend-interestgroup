@@ -86,6 +86,17 @@ class InterestGroupPostController(
         return ResponseEntity.ok(interestGroupPostService.update(groupId, postId, request, jwt))
     }
 
+    @Operation(summary = "Delete post")
+    @DeleteMapping("/{postId}")
+    fun deletePost(
+        @PathVariable groupId: UUID,
+        @PathVariable postId: UUID,
+        @AuthenticationPrincipal jwt: Jwt,
+    ): ResponseEntity<Void> {
+        interestGroupPostService.delete(groupId, postId, jwt)
+        return ResponseEntity.noContent().build()
+    }
+
     @Operation(summary = "Like post")
     @PostMapping("/{postId}/likes")
     fun likePost(

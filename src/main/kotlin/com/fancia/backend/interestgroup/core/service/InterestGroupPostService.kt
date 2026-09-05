@@ -87,6 +87,13 @@ class InterestGroupPostService(
         return post
     }
 
+    fun delete(groupId: UUID, postId: UUID, jwt: Jwt) {
+        jwt.getClaimAsString("userId")?.let { UUID.fromString(it) }
+            ?: throw InvalidAuthenticationException()
+        get(groupId, postId, jwt)
+        commonInternalClient.deletePost(postId)
+    }
+
     fun like(groupId: UUID, postId: UUID, jwt: Jwt) {
         get(groupId, postId, jwt)
         commonInternalClient.likePost(postId)
