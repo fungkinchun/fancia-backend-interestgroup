@@ -60,8 +60,9 @@ class InterestGroupPostController(
         @Parameter(description = "Filter by post status (repeatable)")
         status: List<PostStatus>?,
         @PageableDefault(size = 20) pageable: Pageable,
+        @AuthenticationPrincipal jwt: Jwt?,
     ): ResponseEntity<Page<PostResponse>> {
-        return ResponseEntity.ok(interestGroupPostService.list(groupId, kind, status, pageable))
+        return ResponseEntity.ok(interestGroupPostService.list(groupId, kind, status, pageable, jwt))
     }
 
     @Operation(summary = "Get post on interest group")
@@ -69,8 +70,9 @@ class InterestGroupPostController(
     fun getPost(
         @PathVariable groupId: UUID,
         @PathVariable postId: UUID,
+        @AuthenticationPrincipal jwt: Jwt?,
     ): ResponseEntity<PostResponse> {
-        return ResponseEntity.ok(interestGroupPostService.get(groupId, postId))
+        return ResponseEntity.ok(interestGroupPostService.get(groupId, postId, jwt))
     }
 
     @Operation(summary = "Update post")
