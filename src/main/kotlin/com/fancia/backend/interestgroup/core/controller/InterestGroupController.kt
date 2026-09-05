@@ -1,11 +1,9 @@
 package com.fancia.backend.interestgroup.core.controller
 
-import com.fancia.backend.interestgroup.core.service.InterestGroupMembershipService
 import com.fancia.backend.interestgroup.core.service.InterestGroupService
 import com.fancia.backend.interestgroup.core.service.SavedResourceService
 import com.fancia.backend.shared.common.saved.core.dto.SavedResourceResponse
 import com.fancia.backend.shared.interestgroup.core.dto.*
-import com.fancia.backend.shared.interestgroup.core.enums.MembershipStatus
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.responses.ApiResponse
@@ -29,7 +27,6 @@ import java.util.*
 @SecurityRequirement(name = "bearerAuth")
 class InterestGroupController(
     private val interestGroupService: InterestGroupService,
-    private val interestGroupMembershipService: InterestGroupMembershipService,
     private val savedResourceService: SavedResourceService,
 ) {
     @Operation(
@@ -46,22 +43,7 @@ class InterestGroupController(
         @RequestBody @Valid request: CreateInterestGroupRequest,
         @AuthenticationPrincipal jwt: Jwt
     ): ResponseEntity<InterestGroupResponse> {
-        val interestGroup = interestGroupService.create(request, jwt)
-        val membership = interestGroupMembershipService.create(
-            interestGroupId = interestGroup.id!!,
-            CreateInterestGroupMembershipRequest(payload = ""),
-            jwt
-        )
-        interestGroupMembershipService.update(
-            interestGroupId = membership.interestGroupId!!,
-            userId = membership.userId!!,
-            UpdateInterestGroupMembershipRequest(
-                status = MembershipStatus.ACCEPTED
-            ),
-            jwt
-        )
-        // Re-load so memberCount includes the creator's ACCEPTED membership.
-        return ResponseEntity.ok(interestGroupService.findById(interestGroup.id!!))
+        return ResponseEntity.ok(interestGroupService.create(request, jwt))
     }
 
     @PutMapping("/{id}")

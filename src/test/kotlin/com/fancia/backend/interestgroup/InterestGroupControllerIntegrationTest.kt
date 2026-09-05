@@ -1,9 +1,12 @@
 package com.fancia.backend.interestgroup
 
 import com.fancia.backend.interestgroup.core.entity.InterestGroup
+import com.fancia.backend.interestgroup.core.repository.InterestGroupMembershipRepository
 import com.fancia.backend.interestgroup.core.repository.InterestGroupRepository
 import com.fancia.backend.interestgroup.mapper.toEntity
 import com.fancia.backend.shared.interestgroup.core.dto.InterestGroupResponse
+import com.fancia.backend.shared.interestgroup.core.enums.InterestGroupRole
+import com.fancia.backend.shared.interestgroup.core.enums.MembershipStatus
 import com.github.tomakehurst.wiremock.client.WireMock.*
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
@@ -32,6 +35,7 @@ import java.util.*
 class InterestGroupControllerIntegrationTest(
     private val mockMvc: MockMvc,
     private val interestGroupRepository: InterestGroupRepository,
+    private val interestGroupMembershipRepository: InterestGroupMembershipRepository,
     private val jsonMapper: JsonMapper,
     private val wiremock: WireMockContainer,
 ) : FunSpec({
@@ -106,6 +110,8 @@ class InterestGroupControllerIntegrationTest(
                 jsonPath("$.name", `is`("testInterestGroup"))
                 jsonPath("$.slug", `is`("testinterestgroup"))
                 jsonPath("$.id", `is`(notNullValue()))
+                jsonPath("$.createdBy", `is`(testUserId.toString()))
+                jsonPath("$.memberCount", `is`(1))
                 jsonPath("$.links.length()", `is`(2))
                 jsonPath("$.links[0].type", `is`("WEBSITE"))
                 jsonPath("$.links[0].url", `is`("https://example.com"))
@@ -115,6 +121,12 @@ class InterestGroupControllerIntegrationTest(
         found?.id shouldBe createdGroup.id
         found?.links?.size shouldBe 2
         createdGroup.links.size shouldBe 2
+        val ownerMembership = interestGroupMembershipRepository.findByIdInterestGroupIdAndIdUserId(
+            createdGroup.id!!,
+            testUserId,
+        )
+        ownerMembership?.role shouldBe InterestGroupRole.ADMIN
+        ownerMembership?.status shouldBe MembershipStatus.ACCEPTED
     }
 
 
