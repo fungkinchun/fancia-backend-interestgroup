@@ -85,9 +85,10 @@ class InterestGroupController(
     @Operation(summary = "Get interest group by id or slug")
     fun getInterestGroup(
         @PathVariable ref: String,
+        @RequestParam(required = false) invite: String?,
         @AuthenticationPrincipal jwt: Jwt?,
     ): ResponseEntity<InterestGroupResponse> {
-        return ResponseEntity.ok(interestGroupService.findByIdOrSlug(ref, jwt))
+        return ResponseEntity.ok(interestGroupService.findByIdOrSlug(ref, jwt, invite))
     }
 
     @GetMapping

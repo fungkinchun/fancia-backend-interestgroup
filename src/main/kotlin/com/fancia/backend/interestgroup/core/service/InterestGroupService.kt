@@ -16,6 +16,7 @@ import com.fancia.backend.interestgroup.mapper.toEntity
 import com.fancia.backend.shared.common.core.exception.InvalidAuthenticationException
 import com.fancia.backend.shared.common.core.exception.PremiumFeatureLimitException
 import com.fancia.backend.shared.common.core.enums.ResourceVisibility
+import com.fancia.backend.shared.common.core.utils.InviteTokens
 import com.fancia.backend.shared.common.core.utils.Slugify
 import com.fancia.backend.shared.common.social.core.entity.Link
 import com.fancia.backend.shared.common.tag.core.dto.CreateTagsRequest
@@ -85,10 +86,12 @@ class InterestGroupService(
             .orElseThrow { InterestGroupNotFoundException(id) }
     }
 
-    fun findByIdOrSlug(ref: String, jwt: Jwt? = null): InterestGroupResponse {
-        val group = resolveByIdOrSlug(ref)
+    fun findByIdOrSlug(ref: String, jwt: Jwt? = null, invite: String? = null): InterestGroupResponse {
+        val group = syncInviteToken(resolveByIdOrSlug(ref))
+        assertCanAccess(group, jwt, invite)
         val response = group.toDto(acceptedMemberCount(group.id!!))
         enrichSaved(response, jwt)
+        exposeInviteTokenIfCreator(response, group, jwt)
         return response
     }
 
@@ -244,6 +247,7 @@ class InterestGroupService(
             applyTags(it.tags, request.tags)
             it.links.clear()
             it.links.addAll(request.links.map { link -> Link(type = link.type, url = link.url) })
+            syncInviteTokenInPlace(it)
             val interestGroup = interestGroupRepository.save(it)
             val ownerMembership = InterestGroupMembership().apply {
                 this.interestGroup = interestGroup
@@ -258,7 +262,7 @@ class InterestGroupService(
             interestGroup.memberships.add(ownerMembership)
             val saved = interestGroupRepository.save(interestGroup)
             invalidateGroupCaches(saved.id!!)
-            return saved.toDto(1)
+            return saved.toDto(1).also { exposeInviteTokenIfCreator(it, saved, jwt) }
         }
     }
 
@@ -272,9 +276,12 @@ class InterestGroupService(
             applyTags(it.tags, request.tags)
             it.links.clear()
             it.links.addAll(request.links.map { link -> Link(type = link.type, url = link.url) })
+            syncInviteTokenInPlace(it)
             val saved = interestGroupRepository.save(it)
             invalidateGroupCaches(saved.id!!)
-            return saved.toDto(acceptedMemberCount(saved.id!!))
+            return saved.toDto(acceptedMemberCount(saved.id!!)).also {
+                exposeInviteTokenIfCreator(it, saved, jwt)
+            }
         }
     }
 
@@ -366,6 +373,61 @@ class InterestGroupService(
         cache.evictByPrefix(LIST_PREFIX)
         cache.evictByPrefix(COUNTS_PREFIX)
     }
+
+    private fun assertCanAccess(group: InterestGroup, jwt: Jwt?, invite: String?) {
+        if (group.visibility != ResourceVisibility.PRIVATE) return
+        val userId = jwtUserId(jwt)
+        if (userId != null && userId == group.createdBy) return
+        val token = group.inviteToken
+        if (!token.isNullOrBlank() && !invite.isNullOrBlank() && token == invite) return
+        val groupId = group.id
+        if (userId != null && groupId != null &&
+            interestGroupMembershipRepository.existsByIdInterestGroupIdAndIdUserId(groupId, userId)
+        ) {
+            return
+        }
+        throw InterestGroupNotFoundException(group.id ?: group.slug)
+    }
+
+    fun assertCanJoin(group: InterestGroup, jwt: Jwt, invite: String?) {
+        assertCanAccess(group, jwt, invite)
+    }
+
+    private fun syncInviteToken(group: InterestGroup): InterestGroup {
+        if (!syncInviteTokenInPlace(group)) return group
+        return interestGroupRepository.save(group)
+    }
+
+    private fun syncInviteTokenInPlace(group: InterestGroup): Boolean {
+        if (group.visibility == ResourceVisibility.PRIVATE) {
+            if (group.inviteToken.isNullOrBlank()) {
+                group.inviteToken = InviteTokens.generate()
+                return true
+            }
+            return false
+        }
+        if (group.inviteToken != null) {
+            group.inviteToken = null
+            return true
+        }
+        return false
+    }
+
+    private fun exposeInviteTokenIfCreator(
+        response: InterestGroupResponse,
+        group: InterestGroup,
+        jwt: Jwt?,
+    ) {
+        val userId = jwtUserId(jwt)
+        if (userId != null && userId == group.createdBy && group.visibility == ResourceVisibility.PRIVATE) {
+            response.inviteToken = group.inviteToken
+        } else {
+            response.inviteToken = null
+        }
+    }
+
+    private fun jwtUserId(jwt: Jwt?): UUID? =
+        jwt?.getClaimAsString("userId")?.let { runCatching { UUID.fromString(it) }.getOrNull() }
 
     companion object {
         private const val LIST_PREFIX = "ig:list:"

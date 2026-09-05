@@ -5,6 +5,7 @@ import com.fancia.backend.interestgroup.core.repository.InterestGroupMembershipR
 import com.fancia.backend.interestgroup.core.repository.InterestGroupRepository
 import com.fancia.backend.interestgroup.mapper.toDto
 import com.fancia.backend.interestgroup.mapper.toEntity
+import com.fancia.backend.shared.common.core.enums.ResourceVisibility
 import com.fancia.backend.shared.common.core.exception.InvalidAuthenticationException
 import com.fancia.backend.shared.interestgroup.core.dto.CreateInterestGroupMembershipRequest
 import com.fancia.backend.shared.interestgroup.core.dto.InterestGroupMembershipResponse
@@ -36,12 +37,27 @@ class InterestGroupMembershipService(
     fun create(
         interestGroupId: UUID,
         request: @Valid CreateInterestGroupMembershipRequest,
-        jwt: Jwt
+        jwt: Jwt,
+        invite: String? = null,
     ): InterestGroupMembershipResponse {
         val currentUserId = jwt.getClaimAsString("userId")?.let { UUID.fromString(it) }
             ?: throw InvalidAuthenticationException()
         val interestGroup = interestGroupRepository.findByIdOrNull(interestGroupId)
             ?: throw InterestGroupNotFoundException(interestGroupId)
+        interestGroupService.ifAvailable?.assertCanJoin(interestGroup, jwt, invite)
+            ?: run {
+                if (interestGroup.visibility == ResourceVisibility.PRIVATE) {
+                    val token = interestGroup.inviteToken
+                    val inviteOk = !token.isNullOrBlank() && !invite.isNullOrBlank() && token == invite
+                    val member = interestGroupMembershipRepository.existsByIdInterestGroupIdAndIdUserId(
+                        interestGroupId,
+                        currentUserId,
+                    )
+                    if (currentUserId != interestGroup.createdBy && !inviteOk && !member) {
+                        throw InterestGroupNotFoundException(interestGroupId)
+                    }
+                }
+            }
         if (interestGroupMembershipRepository.existsByIdInterestGroupIdAndIdUserId(
                 interestGroupId,
                 currentUserId

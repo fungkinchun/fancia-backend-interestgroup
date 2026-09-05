@@ -22,6 +22,9 @@ class InterestGroup : AbstractEntity() {
     @Column(nullable = false, length = 16)
     var visibility: ResourceVisibility = ResourceVisibility.PUBLIC
 
+    @Column(name = "invite_token", length = 64)
+    var inviteToken: String? = null
+
     @OneToMany(mappedBy = "interestGroup", cascade = [CascadeType.ALL], orphanRemoval = true)
     val memberships: MutableSet<InterestGroupMembership> = mutableSetOf<InterestGroupMembership>()
 

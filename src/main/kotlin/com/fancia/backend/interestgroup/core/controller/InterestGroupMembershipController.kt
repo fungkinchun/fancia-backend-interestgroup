@@ -40,10 +40,11 @@ class InterestGroupMembershipController(
     @PostMapping("/{interestGroupId}/memberships")
     fun createInterestGroupMembership(
         @PathVariable interestGroupId: UUID,
+        @RequestParam(required = false) invite: String?,
         @RequestBody request: CreateInterestGroupMembershipRequest,
         @AuthenticationPrincipal jwt: Jwt
     ): ResponseEntity<InterestGroupMembershipResponse> {
-        val member = interestGroupMembershipService.create(interestGroupId, request, jwt)
+        val member = interestGroupMembershipService.create(interestGroupId, request, jwt, invite)
         return ResponseEntity.ok(member)
     }
 
