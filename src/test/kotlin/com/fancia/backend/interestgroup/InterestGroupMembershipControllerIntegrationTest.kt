@@ -41,8 +41,8 @@ class InterestGroupMembershipControllerIntegrationTest(
     }
 
     fun stubUser(userId: UUID, showGroups: Boolean?) {
-        // ProfileResponse: non-null groupsCount = visible; omit = hidden.
-        // null showGroups arg → default visible (legacy privacy default).
+        
+        
         val body = mutableMapOf<String, Any>(
             "id" to userId.toString(),
             "visibility" to "PUBLIC",
@@ -51,7 +51,7 @@ class InterestGroupMembershipControllerIntegrationTest(
             body["groupsCount"] = 0
         }
         stubFor(
-            get(urlPathEqualTo("/api/users/$userId"))
+            get(urlPathEqualTo("/api/v1/users/$userId"))
                 .willReturn(
                     aResponse()
                         .withStatus(200)
@@ -86,7 +86,7 @@ class InterestGroupMembershipControllerIntegrationTest(
         )
 
         mockMvc
-            .get("/api/interest-groups/users/$ownerId/memberships?page=0&size=10") {
+            .get("/api/v1/interest-groups/users/$ownerId/memberships?page=0&size=10") {
                 with(jwtFor(viewerId))
                 accept = APPLICATION_JSON
             }
@@ -119,7 +119,7 @@ class InterestGroupMembershipControllerIntegrationTest(
         )
 
         mockMvc
-            .get("/api/interest-groups/users/$ownerId/memberships?page=0&size=10") {
+            .get("/api/v1/interest-groups/users/$ownerId/memberships?page=0&size=10") {
                 with(jwtFor(viewerId))
                 accept = APPLICATION_JSON
             }
@@ -151,7 +151,7 @@ class InterestGroupMembershipControllerIntegrationTest(
         )
 
         mockMvc
-            .get("/api/interest-groups/users/$ownerId/memberships?page=0&size=10") {
+            .get("/api/v1/interest-groups/users/$ownerId/memberships?page=0&size=10") {
                 with(jwtFor(ownerId))
                 accept = APPLICATION_JSON
             }

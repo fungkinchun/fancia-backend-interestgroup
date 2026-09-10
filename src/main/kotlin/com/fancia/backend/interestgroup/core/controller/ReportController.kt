@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
-@RequestMapping("/api/reports")
+@RequestMapping("/api/v1/reports")
 @Tag(name = "Reports", description = "Report interest groups")
 @SecurityRequirement(name = "bearerAuth")
 class ReportController(

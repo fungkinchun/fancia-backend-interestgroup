@@ -46,7 +46,7 @@ class InterestGroupPostControllerIntegrationTest(
 
     fun createGroupViaApi(userId: UUID): UUID {
         stubFor(
-            post(urlPathEqualTo("/api/tags"))
+            post(urlPathEqualTo("/api/v1/tags"))
                 .willReturn(
                     aResponse()
                         .withStatus(201)
@@ -65,7 +65,7 @@ class InterestGroupPostControllerIntegrationTest(
                 )
         )
         val responseBody = mockMvc
-            .post("/api/interest-groups") {
+            .post("/api/v1/interest-groups") {
                 with(jwt().jwt { it.claim("userId", userId) })
                 content = jsonMapper.writeValueAsString(
                     mapOf(
@@ -115,7 +115,7 @@ class InterestGroupPostControllerIntegrationTest(
             createdAt = null,
         )
         stubFor(
-            post(urlPathEqualTo("/internal/posts"))
+            post(urlPathEqualTo("/internal/v1/posts"))
                 .willReturn(
                     aResponse()
                         .withStatus(201)
@@ -138,7 +138,7 @@ class InterestGroupPostControllerIntegrationTest(
             "status" to "FEATURED",
         )
         val responseBody = mockMvc
-            .post("/api/interest-groups/$groupId/posts") {
+            .post("/api/v1/interest-groups/$groupId/posts") {
                 with(jwt().jwt { it.claim("userId", userId) })
                 content = jsonMapper.writeValueAsString(requestBody)
                 contentType = APPLICATION_JSON
@@ -159,13 +159,13 @@ class InterestGroupPostControllerIntegrationTest(
         response.status shouldBe PostStatus.FEATURED
 
         verify(
-            postRequestedFor(urlPathEqualTo("/internal/posts"))
+            postRequestedFor(urlPathEqualTo("/internal/v1/posts"))
                 .withRequestBody(matchingJsonPath("$.targetId", equalTo(groupId.toString())))
                 .withRequestBody(matchingJsonPath("$.authorUserId", equalTo(userId.toString())))
                 .withRequestBody(matchingJsonPath("$.status", equalTo("FEATURED")))
                 .withRequestBody(matchingJsonPath("$.media.length()", equalTo("2"))),
         )
-        val forwardedBody = findAll(postRequestedFor(urlPathEqualTo("/internal/posts"))).single().bodyAsString
+        val forwardedBody = findAll(postRequestedFor(urlPathEqualTo("/internal/v1/posts"))).single().bodyAsString
         val forwardedJson = jsonMapper.readTree(forwardedBody)
         forwardedJson.has("featured") shouldBe false
         forwardedJson.has("pinned") shouldBe false
@@ -178,7 +178,7 @@ class InterestGroupPostControllerIntegrationTest(
         val nonMemberId = UUID.randomUUID()
 
         mockMvc
-            .post("/api/interest-groups/$groupId/posts") {
+            .post("/api/v1/interest-groups/$groupId/posts") {
                 with(jwt().jwt { it.claim("userId", nonMemberId) })
                 content = jsonMapper.writeValueAsString(
                     mapOf(
@@ -194,7 +194,7 @@ class InterestGroupPostControllerIntegrationTest(
                 status { isBadRequest() }
             }
 
-        verify(0, postRequestedFor(urlPathEqualTo("/internal/posts")))
+        verify(0, postRequestedFor(urlPathEqualTo("/internal/v1/posts")))
     }
 
     test("should return not found when interest group does not exist") {
@@ -202,7 +202,7 @@ class InterestGroupPostControllerIntegrationTest(
         val userId = UUID.randomUUID()
 
         mockMvc
-            .post("/api/interest-groups/$missingGroupId/posts") {
+            .post("/api/v1/interest-groups/$missingGroupId/posts") {
                 with(jwt().jwt { it.claim("userId", userId) })
                 content = jsonMapper.writeValueAsString(
                     mapOf(
@@ -218,7 +218,7 @@ class InterestGroupPostControllerIntegrationTest(
                 status { isBadRequest() }
             }
 
-        verify(0, postRequestedFor(urlPathEqualTo("/internal/posts")))
+        verify(0, postRequestedFor(urlPathEqualTo("/internal/v1/posts")))
     }
 
     afterSpec {

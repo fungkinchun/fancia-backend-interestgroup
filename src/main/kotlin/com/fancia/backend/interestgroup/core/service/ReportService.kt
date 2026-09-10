@@ -1,6 +1,6 @@
 package com.fancia.backend.interestgroup.core.service
 
-import com.fancia.backend.interestgroup.core.repository.ReportRepository
+import com.fancia.backend.shared.common.moderation.core.repository.ReportRepository
 import com.fancia.backend.interestgroup.external.UserServiceClient
 import com.fancia.backend.shared.common.core.exception.DomainException
 import com.fancia.backend.shared.common.core.exception.InvalidAuthenticationException

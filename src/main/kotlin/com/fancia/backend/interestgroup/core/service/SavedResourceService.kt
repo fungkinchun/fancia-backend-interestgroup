@@ -1,7 +1,7 @@
 package com.fancia.backend.interestgroup.core.service
 
 import com.fancia.backend.interestgroup.core.repository.InterestGroupRepository
-import com.fancia.backend.interestgroup.core.repository.SavedResourceRepository
+import com.fancia.backend.shared.common.saved.core.repository.SavedResourceRepository
 import com.fancia.backend.shared.common.core.exception.InvalidAuthenticationException
 import com.fancia.backend.shared.common.saved.core.dto.SavedResourceResponse
 import com.fancia.backend.shared.common.saved.core.entity.SavedResource

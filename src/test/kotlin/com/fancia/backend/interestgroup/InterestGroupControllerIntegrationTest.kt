@@ -49,7 +49,7 @@ class InterestGroupControllerIntegrationTest(
     fun stubCreateTag(name: String): UUID {
         val tagId = UUID.randomUUID()
         stubFor(
-            post(urlPathEqualTo("/api/tags"))
+            post(urlPathEqualTo("/api/v1/tags"))
                 .willReturn(
                     aResponse()
                         .withStatus(201)
@@ -80,7 +80,7 @@ class InterestGroupControllerIntegrationTest(
         stubCreateTag("good")
         val testUserId = UUID.randomUUID()
         val response = mockMvc
-            .post("/api/interest-groups") {
+            .post("/api/v1/interest-groups") {
                 with(jwt().jwt {
                     it.claim("userId", testUserId)
                 })
@@ -129,12 +129,11 @@ class InterestGroupControllerIntegrationTest(
         ownerMembership?.status shouldBe MembershipStatus.ACCEPTED
     }
 
-
     test("should reject interest group when name exceeds max length") {
         val testUserId = UUID.randomUUID()
         val longName = "a".repeat(256)
         mockMvc
-            .post("/api/interest-groups") {
+            .post("/api/v1/interest-groups") {
                 with(jwt().jwt {
                     it.claim("userId", testUserId)
                 })
@@ -161,7 +160,7 @@ class InterestGroupControllerIntegrationTest(
         val group = interestGroupRepository.findAll().first { it.name == "testInterestGroup" }
         val tagId = group.tags.first()
         mockMvc
-            .get("/api/interest-groups?tagIds=$tagId&page=0&size=3") {
+            .get("/api/v1/interest-groups?tagIds=$tagId&page=0&size=3") {
                 accept = APPLICATION_JSON
             }
             .andDo { print() }
@@ -177,7 +176,7 @@ class InterestGroupControllerIntegrationTest(
     test("should get interest group by id") {
         val group = interestGroupRepository.findAll().first { it.name == "testInterestGroup" }
         mockMvc
-            .get("/api/interest-groups/${group.id}") {
+            .get("/api/v1/interest-groups/${group.id}") {
                 accept = APPLICATION_JSON
             }
             .andDo { print() }
@@ -193,7 +192,7 @@ class InterestGroupControllerIntegrationTest(
     test("should get interest group by slug") {
         val group = interestGroupRepository.findAll().first { it.name == "testInterestGroup" }
         mockMvc
-            .get("/api/interest-groups/${group.slug}") {
+            .get("/api/v1/interest-groups/${group.slug}") {
                 accept = APPLICATION_JSON
             }
             .andExpect {
@@ -205,7 +204,7 @@ class InterestGroupControllerIntegrationTest(
 
     test("should return 404 when interest group does not exist") {
         mockMvc
-            .get("/api/interest-groups/${UUID.randomUUID()}") {
+            .get("/api/v1/interest-groups/${UUID.randomUUID()}") {
                 accept = APPLICATION_JSON
             }
             .andDo { print() }
@@ -217,7 +216,7 @@ class InterestGroupControllerIntegrationTest(
 
     test("should not list interestGroups because of wrong tag") {
         mockMvc
-            .get("/api/interest-groups?tagIds=${UUID.randomUUID()}&page=0&size=3") {
+            .get("/api/v1/interest-groups?tagIds=${UUID.randomUUID()}&page=0&size=3") {
                 accept = APPLICATION_JSON
             }
             .andDo { print() }

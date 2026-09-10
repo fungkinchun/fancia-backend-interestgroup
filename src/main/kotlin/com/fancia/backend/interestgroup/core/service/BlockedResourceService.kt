@@ -1,6 +1,6 @@
 package com.fancia.backend.interestgroup.core.service
 
-import com.fancia.backend.interestgroup.core.repository.BlockedResourceRepository
+import com.fancia.backend.shared.common.moderation.core.repository.BlockedResourceRepository
 import com.fancia.backend.interestgroup.external.UserInternalClient
 import com.fancia.backend.shared.common.core.exception.InvalidAuthenticationException
 import com.fancia.backend.shared.common.moderation.core.dto.BlockedResourceResponse

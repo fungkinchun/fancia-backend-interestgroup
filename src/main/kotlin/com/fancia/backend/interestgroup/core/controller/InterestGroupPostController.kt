@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.*
 import java.util.*
 
 @RestController
-@RequestMapping("/api/interest-groups/{groupId}/posts")
+@RequestMapping("/api/v1/interest-groups/{groupId}/posts")
 @Tag(name = "Interest Group Posts", description = "Posts on interest groups")
 @SecurityRequirement(name = "bearerAuth")
 class InterestGroupPostController(

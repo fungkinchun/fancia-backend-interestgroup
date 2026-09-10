@@ -7,7 +7,7 @@ import com.fancia.backend.shared.common.redis.RedisQueryCache
 import com.fancia.backend.interestgroup.core.entity.InterestGroup
 import com.fancia.backend.interestgroup.core.entity.InterestGroupMembership
 import com.fancia.backend.interestgroup.core.entity.InterestGroupMembershipId
-import com.fancia.backend.interestgroup.core.repository.EventOccurrenceRepository
+import com.fancia.backend.shared.event.core.repository.EventOccurrenceRepository
 import com.fancia.backend.interestgroup.core.repository.InterestGroupMembershipRepository
 import com.fancia.backend.interestgroup.core.repository.InterestGroupRepository
 import com.fancia.backend.interestgroup.external.CommonServiceClient
@@ -18,6 +18,9 @@ import com.fancia.backend.shared.common.core.exception.PremiumFeatureLimitExcept
 import com.fancia.backend.shared.common.core.enums.ResourceVisibility
 import com.fancia.backend.shared.common.core.utils.InviteTokens
 import com.fancia.backend.shared.common.core.utils.Slugify
+import com.fancia.backend.shared.common.rating.core.enums.RatedResourceType
+import com.fancia.backend.shared.common.rating.core.repository.ResourceRatingRepository
+import com.fancia.backend.shared.common.rating.core.support.loadEnrichment
 import com.fancia.backend.shared.common.social.core.entity.Link
 import com.fancia.backend.shared.common.tag.core.dto.CreateTagsRequest
 import com.fancia.backend.shared.common.tag.core.dto.TagItemRequest
@@ -50,6 +53,7 @@ class InterestGroupService(
     private val commonServiceClient: CommonServiceClient,
     private val savedResourceService: SavedResourceService,
     private val blockedResourceService: BlockedResourceService,
+    private val resourceRatingRepository: ResourceRatingRepository,
     private val redisQueryCache: ObjectProvider<RedisQueryCache>,
 ) {
     fun listSavedInterestGroups(jwt: Jwt, pageable: Pageable): Page<InterestGroupResponse> {
@@ -99,6 +103,7 @@ class InterestGroupService(
         assertNotBlocked(group, jwt)
         val response = group.toDto(acceptedMemberCount(group.id!!))
         enrichSaved(response, jwt)
+        enrichRating(response, jwt)
         exposeInviteTokenIfCreator(response, group, jwt)
         return response
     }
@@ -111,6 +116,19 @@ class InterestGroupService(
             return
         }
         response.savedByCurrentUser = savedResourceService.isSaved(userId, groupId)
+    }
+
+    private fun enrichRating(response: InterestGroupResponse, jwt: Jwt?) {
+        val groupId = response.id ?: return
+        val userId = jwt?.getClaimAsString("userId")?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+        val enrichment = resourceRatingRepository.loadEnrichment(
+            RatedResourceType.INTEREST_GROUP,
+            groupId,
+            userId,
+        )
+        response.averageRating = enrichment.averageRating
+        response.ratingCount = enrichment.ratingCount
+        response.currentUserRating = enrichment.currentUserRating
     }
 
     fun resolveByIdOrSlug(ref: String): InterestGroup {

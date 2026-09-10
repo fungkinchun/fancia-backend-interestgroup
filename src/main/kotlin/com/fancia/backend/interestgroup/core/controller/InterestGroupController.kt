@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.*
 import java.util.*
 
 @RestController
-@RequestMapping("/api/interest-groups")
+@RequestMapping("/api/v1/interest-groups")
 @Tag(name = "Interest Groups", description = "Interest Group endpoints")
 @SecurityRequirement(name = "bearerAuth")
 class InterestGroupController(
