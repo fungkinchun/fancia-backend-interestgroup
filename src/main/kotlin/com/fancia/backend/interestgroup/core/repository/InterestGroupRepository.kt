@@ -59,6 +59,8 @@ interface InterestGroupRepository : JpaRepository<InterestGroup, UUID> {
 
     fun findByIdAndCreatedBy(@Param("id") id: UUID, @Param("createdBy") createdBy: UUID): InterestGroup?
 
+    fun findByCreatedBy(createdBy: UUID): List<InterestGroup>
+
     @Query("SELECT g FROM InterestGroup g WHERE :tagId MEMBER OF g.tags")
     fun findByTagId(@Param("tagId") tagId: UUID): List<InterestGroup>
 

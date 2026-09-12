@@ -18,9 +18,10 @@ class SecurityConfiguration {
     @Bean
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {
         http.authorizeHttpRequests { customizer ->
-            customizer.requestMatchers("/api/blocked", "/api/blocked/**").authenticated()
-            customizer.requestMatchers("/api/reports", "/api/reports/**").authenticated()
-            customizer.requestMatchers(HttpMethod.GET, "/api/interest-groups/me/saved").authenticated()
+            customizer.requestMatchers("/api/v1/blocked", "/api/v1/blocked/**").authenticated()
+            customizer.requestMatchers("/api/v1/reports", "/api/v1/reports/**").authenticated()
+            customizer.requestMatchers(HttpMethod.GET, "/api/v1/interest-groups/me/saved").authenticated()
+            customizer.requestMatchers(HttpMethod.DELETE, "/internal/v1/users/*/resources").permitAll()
             customizer.requestMatchers(HttpMethod.GET, "/api/**").permitAll()
             customizer.requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
             customizer.requestMatchers("/actuator/**").permitAll()
